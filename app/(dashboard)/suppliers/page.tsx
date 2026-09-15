@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Eye, Truck } from 'lucide-react';
 import { supplierService } from '../../../services/supplier.service';
@@ -68,12 +69,12 @@ export default function SuppliersPage() {
       header: 'Supplier & Code',
       cell: (row) => (
         <div>
-          <a
+          <Link
             href={`/suppliers/${row._id}`}
             className="font-bold text-slate-900 dark:text-slate-100 hover:text-red-600 transition"
           >
             {row.name}
-          </a>
+          </Link>
           <p className="text-xs text-slate-500 font-mono">{row.supplierCode}</p>
         </div>
       ),
@@ -119,11 +120,11 @@ export default function SuppliersPage() {
     {
       header: 'Actions',
       cell: (row) => (
-        <a href={`/suppliers/${row._id}`}>
+        <Link href={`/suppliers/${row._id}`}>
           <Button variant="outline" size="sm">
             <Eye className="w-3.5 h-3.5 mr-1" /> Orders
           </Button>
-        </a>
+        </Link>
       ),
     },
   ];

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
   TrendingUp,
@@ -197,9 +198,9 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-base">Recent Sales Invoices</CardTitle>
-            <a href="/sales" className="text-xs text-red-600 hover:text-red-700 hover:underline flex items-center font-medium">
+            <Link href="/sales" className="text-xs text-red-600 hover:text-red-700 hover:underline flex items-center font-medium">
               View All <ArrowUpRight className="h-3 w-3 ml-0.5" />
-            </a>
+            </Link>
           </CardHeader>
           <CardContent>
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -247,9 +248,9 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-base">Recent Purchase Orders</CardTitle>
-            <a href="/purchases" className="text-xs text-red-600 hover:text-red-700 hover:underline flex items-center font-medium">
+            <Link href="/purchases" className="text-xs text-red-600 hover:text-red-700 hover:underline flex items-center font-medium">
               View All <ArrowUpRight className="h-3 w-3 ml-0.5" />
-            </a>
+            </Link>
           </CardHeader>
           <CardContent>
             <div className="divide-y divide-slate-100 dark:divide-slate-800">

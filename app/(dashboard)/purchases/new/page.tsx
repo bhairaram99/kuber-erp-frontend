@@ -17,7 +17,7 @@ import { Product, Supplier } from '../../../../types';
 interface PurchaseLineItem {
   productId: string;
   product?: Product;
-  quantity: number;
+  quantity: number | '';
   purchasePrice: number;
   discount: number;
   taxPercentage: number;
@@ -70,9 +70,14 @@ export default function NewPurchasePage() {
     setItems(newItems);
   };
 
-  const handleQuantityChange = (index: number, qty: number) => {
+  const handleQuantityChange = (index: number, raw: string) => {
     const newItems = [...items];
-    newItems[index].quantity = Math.max(1, qty);
+    if (raw === '') {
+      newItems[index].quantity = '';
+    } else {
+      const qty = Number(raw);
+      newItems[index].quantity = Number.isNaN(qty) ? '' : Math.max(0, qty);
+    }
     setItems(newItems);
   };
 
@@ -103,7 +108,8 @@ export default function NewPurchasePage() {
 
   // Calculations
   const lineSubtotals = items.map((item) => {
-    const gross = item.quantity * item.purchasePrice;
+    const quantity = Number(item.quantity) || 0;
+    const gross = quantity * item.purchasePrice;
     const tax = (gross * (item.taxPercentage || 0)) / 100;
     return { gross, tax, total: gross + tax };
   });
@@ -120,7 +126,9 @@ export default function NewPurchasePage() {
       return;
     }
 
-    const invalidItem = items.find((i) => !i.productId || i.quantity <= 0);
+    const invalidItem = items.find(
+      (i) => !i.productId || Number(i.quantity) <= 0,
+    );
     if (invalidItem) {
       setErrorMessage('Please select a valid product and quantity for all rows.');
       return;
@@ -287,11 +295,10 @@ export default function NewPurchasePage() {
                       <td className="p-2">
                         <Input
                           type="number"
-                          min="1"
+                          min="0"
+                          step="any"
                           value={item.quantity}
-                          onChange={(e) =>
-                            handleQuantityChange(idx, Number(e.target.value))
-                          }
+                          onChange={(e) => handleQuantityChange(idx, e.target.value)}
                           className="h-8 text-xs w-20"
                         />
                       </td>

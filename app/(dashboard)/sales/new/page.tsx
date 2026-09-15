@@ -17,7 +17,7 @@ import { Product, Customer } from '../../../../types';
 interface LineItem {
   productId: string;
   product?: Product;
-  quantity: number;
+  quantity: number | '';
   sellingPrice: number;
   discount: number;
   taxPercentage: number;
@@ -70,9 +70,14 @@ export default function NewSalePage() {
     setItems(newItems);
   };
 
-  const handleQuantityChange = (index: number, qty: number) => {
+  const handleQuantityChange = (index: number, raw: string) => {
     const newItems = [...items];
-    newItems[index].quantity = Math.max(1, qty);
+    if (raw === '') {
+      newItems[index].quantity = '';
+    } else {
+      const qty = Number(raw);
+      newItems[index].quantity = Number.isNaN(qty) ? '' : Math.max(0, qty);
+    }
     setItems(newItems);
   };
 
@@ -109,7 +114,8 @@ export default function NewSalePage() {
 
   // Calculations
   const lineSubtotals = items.map((item) => {
-    const gross = item.quantity * item.sellingPrice;
+    const quantity = Number(item.quantity) || 0;
+    const gross = quantity * item.sellingPrice;
     const discounted = gross - (gross * (item.discount || 0)) / 100;
     const tax = (discounted * (item.taxPercentage || 0)) / 100;
     return { gross, discounted, tax, total: discounted + tax };
@@ -132,7 +138,9 @@ export default function NewSalePage() {
       return;
     }
 
-    const invalidItem = items.find((i) => !i.productId || i.quantity <= 0);
+    const invalidItem = items.find(
+      (i) => !i.productId || Number(i.quantity) <= 0,
+    );
     if (invalidItem) {
       setErrorMessage('Please select a valid product and quantity for all rows.');
       return;
@@ -140,7 +148,7 @@ export default function NewSalePage() {
 
     // Stock check
     for (const item of items) {
-      if (item.product && item.quantity > item.product.currentStock) {
+      if (item.product && Number(item.quantity) > item.product.currentStock) {
         setErrorMessage(
           `Insufficient stock for "${item.product.name}". Available: ${item.product.currentStock} ${item.product.unit}, requested: ${item.quantity}`,
         );
@@ -282,7 +290,7 @@ export default function NewSalePage() {
                 {items.map((item, idx) => {
                   const prod = item.product;
                   const isStockWarning =
-                    prod && item.quantity > prod.currentStock;
+                    prod && Number(item.quantity) > prod.currentStock;
 
                   return (
                     <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
@@ -322,11 +330,10 @@ export default function NewSalePage() {
                       <td className="p-2">
                         <Input
                           type="number"
-                          min="1"
+                          min="0"
+                          step="any"
                           value={item.quantity}
-                          onChange={(e) =>
-                            handleQuantityChange(idx, Number(e.target.value))
-                          }
+                          onChange={(e) => handleQuantityChange(idx, e.target.value)}
                           className="h-8 text-xs w-20"
                         />
                       </td>

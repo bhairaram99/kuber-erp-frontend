@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Save } from 'lucide-react';
 import { customerService } from '../../../../services/customer.service';
 import { PageHeader } from '../../../../components/common/page-header';
@@ -10,6 +11,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../../components
 import { Input } from '../../../../components/ui/input';
 import { Button } from '../../../../components/ui/button';
 import { Select } from '../../../../components/ui/select';
+
+const PRESET_CUSTOMER_TYPES = [
+  'Furniture Manufacturer',
+  'Wholesale Buyer',
+  'Architect / Interior Studio',
+  'Building Contractor',
+  'Retail Walk-in',
+];
+
+const OTHER_TYPE_VALUE = '__other__';
 
 export default function NewCustomerPage() {
   const router = useRouter();
@@ -28,16 +39,32 @@ export default function NewCustomerPage() {
     postalCode: '',
     customerType: 'Furniture Manufacturer',
     taxNumber: '',
-    creditLimit: 100000,
     notes: '',
   });
-
+  const [selectedType, setSelectedType] = useState('Furniture Manufacturer');
+  const [customType, setCustomType] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  const { data: customersData } = useQuery({
+    queryKey: ['all-customers'],
+    queryFn: () => customerService.findAll(),
+  });
+
+  const extraTypes = useMemo(() => {
+    const existing = ((customersData as any)?.data || [])
+      .map((customer: { customerType?: string }) => customer.customerType)
+      .filter(Boolean) as string[];
+
+    return Array.from(new Set(existing)).filter(
+      (type) => !PRESET_CUSTOMER_TYPES.includes(type) && type !== 'Other',
+    );
+  }, [customersData]);
 
   const createMutation = useMutation({
     mutationFn: (data: any) => customerService.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['all-customers'] });
       router.push('/customers');
     },
     onError: (err: any) => {
@@ -45,14 +72,53 @@ export default function NewCustomerPage() {
     },
   });
 
+  const handleChange = (field: string, val: any) => {
+    setFormData((prev) => ({ ...prev, [field]: val }));
+  };
+
+  const handleTypeChange = (value: string) => {
+    setSelectedType(value);
+    if (value === OTHER_TYPE_VALUE) {
+      handleChange('customerType', customType.trim());
+      return;
+    }
+    handleChange('customerType', value);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    createMutation.mutate(formData);
-  };
 
-  const handleChange = (field: string, val: any) => {
-    setFormData((prev) => ({ ...prev, [field]: val }));
+    const customerType =
+      selectedType === OTHER_TYPE_VALUE
+        ? customType.trim()
+        : selectedType.trim();
+
+    if (!formData.name.trim() || !formData.phone.trim()) {
+      setError('Contact person name and phone number are required.');
+      return;
+    }
+
+    if (!customerType) {
+      setError('Please select a customer type, or enter a new type.');
+      return;
+    }
+
+    createMutation.mutate({
+      name: formData.name.trim(),
+      phone: formData.phone.trim(),
+      company: formData.company.trim() || undefined,
+      customerCode: formData.customerCode.trim() || undefined,
+      email: formData.email.trim() || undefined,
+      taxNumber: formData.taxNumber.trim() || undefined,
+      customerType,
+      address: formData.address.trim() || undefined,
+      city: formData.city.trim() || undefined,
+      state: formData.state.trim() || undefined,
+      country: formData.country.trim() || undefined,
+      postalCode: formData.postalCode.trim() || undefined,
+      notes: formData.notes.trim() || undefined,
+    });
   };
 
   return (
@@ -61,11 +127,11 @@ export default function NewCustomerPage() {
         title="Register New Customer"
         description="Add a new timber client, commercial furniture studio, or contractor."
         actions={
-          <a href="/customers">
+          <Link href="/customers">
             <Button variant="outline" size="sm">
               <ArrowLeft className="w-4 h-4 mr-1.5" /> Cancel
             </Button>
-          </a>
+          </Link>
         }
       />
 
@@ -110,34 +176,47 @@ export default function NewCustomerPage() {
               onChange={(e) => handleChange('phone', e.target.value)}
             />
             <Input
-              label="Email Address"
+              label="Email Address (Optional)"
               type="email"
               placeholder="orders@company.example"
               value={formData.email}
               onChange={(e) => handleChange('email', e.target.value)}
             />
-            <Select
-              label="Customer Type"
-              value={formData.customerType}
-              onChange={(e) => handleChange('customerType', e.target.value)}
-            >
-              <option value="Furniture Manufacturer">Furniture Manufacturer</option>
-              <option value="Wholesale Buyer">Wholesale Buyer</option>
-              <option value="Architect / Interior Studio">Architect / Interior Studio</option>
-              <option value="Building Contractor">Building Contractor</option>
-              <option value="Retail Walk-in">Retail Walk-in</option>
-            </Select>
+            <div className="space-y-2">
+              <Select
+                label="Customer Type"
+                value={selectedType}
+                onChange={(e) => handleTypeChange(e.target.value)}
+              >
+                {PRESET_CUSTOMER_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+                {extraTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+                <option value={OTHER_TYPE_VALUE}>Other (enter new type)</option>
+              </Select>
+              {selectedType === OTHER_TYPE_VALUE && (
+                <Input
+                  label="New Customer Type *"
+                  placeholder="e.g. Exporter, Government, Hotel Project"
+                  value={customType}
+                  onChange={(e) => {
+                    setCustomType(e.target.value);
+                    handleChange('customerType', e.target.value);
+                  }}
+                />
+              )}
+            </div>
             <Input
-              label="GSTIN / Tax Number"
+              label="GSTIN / Tax Number (Optional)"
               placeholder="24AAAAA0000A1Z5"
               value={formData.taxNumber}
               onChange={(e) => handleChange('taxNumber', e.target.value)}
-            />
-            <Input
-              label="Credit Limit (₹)"
-              type="number"
-              value={formData.creditLimit}
-              onChange={(e) => handleChange('creditLimit', Number(e.target.value))}
             />
           </CardContent>
         </Card>
@@ -182,11 +261,11 @@ export default function NewCustomerPage() {
         </Card>
 
         <div className="flex justify-end gap-3">
-          <a href="/customers">
+          <Link href="/customers">
             <Button type="button" variant="outline">
               Cancel
             </Button>
-          </a>
+          </Link>
           <Button
             type="submit"
             className="bg-red-600 hover:bg-red-700 text-white"

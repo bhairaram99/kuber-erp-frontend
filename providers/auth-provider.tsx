@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { User } from '../types';
 import { authService } from '../services/auth.service';
 import { getToken, removeToken, setStoredUser, setToken, getStoredUser } from '../lib/auth/token';
@@ -19,10 +19,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(getStoredUser());
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const router = useRouter();
-  const pathname = usePathname();
 
   const refreshUser = async () => {
     try {
@@ -44,20 +43,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    refreshUser();
+    const cachedUser = getStoredUser();
+    const token = getToken();
+    if (cachedUser && token) {
+      setUser(cachedUser);
+      setIsLoading(false);
+    }
+    void refreshUser();
   }, []);
 
   const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      const res = await authService.login({ email, password });
-      setToken(res.accessToken);
-      setUser(res.user);
-      setStoredUser(res.user);
-      router.push('/dashboard');
-    } finally {
-      setIsLoading(false);
-    }
+    const res = await authService.login({ email, password });
+    setToken(res.accessToken);
+    setUser(res.user);
+    setStoredUser(res.user);
+    setIsLoading(false);
+    router.push('/dashboard');
   };
 
   const logout = () => {

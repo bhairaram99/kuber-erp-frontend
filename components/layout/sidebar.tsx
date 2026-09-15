@@ -144,7 +144,13 @@ const navSections = [
   },
 ];
 
-export function Sidebar({ className }: { className?: string }) {
+export function Sidebar({
+  className,
+  onNavigate,
+}: {
+  className?: string;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   const { hasPermission } = useAuth();
 
@@ -195,9 +201,11 @@ export function Sidebar({ className }: { className?: string }) {
                   (item.href !== '/dashboard' && pathname.startsWith(item.href));
 
                 return (
-                  <a
+                  <Link
                     key={item.href}
                     href={item.href}
+                    onClick={onNavigate}
+                    prefetch
                     className={cn(
                       'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150',
                       isActive
@@ -207,7 +215,7 @@ export function Sidebar({ className }: { className?: string }) {
                   >
                     <Icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-white' : 'text-slate-400')} />
                     <span className="truncate">{item.title}</span>
-                  </a>
+                  </Link>
                 );
               })}
             </div>
