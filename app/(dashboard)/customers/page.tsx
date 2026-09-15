@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Eye, Phone, Mail, Building, CreditCard } from 'lucide-react';
 import { customerService } from '../../../services/customer.service';
@@ -27,12 +28,12 @@ export default function CustomersPage() {
       header: 'Customer & Code',
       cell: (row) => (
         <div>
-          <a
+          <Link
             href={`/customers/${row._id}`}
             className="font-bold text-slate-900 dark:text-slate-100 hover:text-red-600 transition"
           >
             {row.name}
-          </a>
+          </Link>
           <p className="text-xs text-slate-500 font-mono">
             {row.customerCode} • {row.customerType}
           </p>
@@ -95,11 +96,11 @@ export default function CustomersPage() {
     {
       header: 'Actions',
       cell: (row) => (
-        <a href={`/customers/${row._id}`}>
+        <Link href={`/customers/${row._id}`}>
           <Button variant="outline" size="sm">
             <Eye className="w-3.5 h-3.5 mr-1" /> Ledger
           </Button>
-        </a>
+        </Link>
       ),
     },
   ];
@@ -111,12 +112,12 @@ export default function CustomersPage() {
         description="Track furniture makers, contractors, wholesale buyers, order volumes, and payment balances."
         actions={
           <PermissionGuard permission={PERMISSIONS.CUSTOMERS_CREATE}>
-            <a href="/customers/new">
+            <Link href="/customers/new">
               <Button className="bg-red-600 hover:bg-red-700 text-white font-medium">
                 <Plus className="w-4 h-4 mr-1.5" />
                 Register Customer
               </Button>
-            </a>
+            </Link>
           </PermissionGuard>
         }
       />

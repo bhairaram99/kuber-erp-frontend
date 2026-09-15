@@ -1,21 +1,41 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Phone, Mail, Building, CreditCard, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, FileDown, Printer, ShoppingCart } from 'lucide-react';
 import { customerService } from '../../../../services/customer.service';
 import { salesService } from '../../../../services/sales.service';
 import { paymentService } from '../../../../services/payment.service';
+import { settingService } from '../../../../services/setting.service';
 import { PageHeader } from '../../../../components/common/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card';
 import { Button } from '../../../../components/ui/button';
 import { Badge } from '../../../../components/ui/badge';
+import { Input } from '../../../../components/ui/input';
 import { formatCurrency, formatDate } from '../../../../lib/utils';
+import {
+  downloadCustomerLedgerPdf,
+  printCustomerLedger,
+  toBusinessProfile,
+} from '../../../../lib/documents';
+import { useToast } from '../../../../providers/toast-provider';
+
+function toQueryDate(value: string, endOfDay = false): string | undefined {
+  if (!value) return undefined;
+  return endOfDay ? `${value}T23:59:59.999` : `${value}T00:00:00.000`;
+}
 
 export default function CustomerDetailPage() {
   const params = useParams();
   const id = params?.id as string;
+  const { showToast } = useToast();
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+
+  const queryFrom = toQueryDate(fromDate);
+  const queryTo = toQueryDate(toDate, true);
 
   const { data: customerRes, isLoading } = useQuery({
     queryKey: ['customer', id],
@@ -23,21 +43,81 @@ export default function CustomerDetailPage() {
     enabled: !!id,
   });
 
-  const { data: salesRes } = useQuery({
-    queryKey: ['customer-sales', id],
-    queryFn: () => salesService.findPaginated({ customerId: id, limit: 10 }),
+  const { data: settingsRes } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => settingService.getSettings(),
+  });
+
+  const { data: salesRes, isLoading: salesLoading } = useQuery({
+    queryKey: ['customer-sales', id, queryFrom, queryTo],
+    queryFn: () =>
+      salesService.findPaginated({
+        customerId: id,
+        limit: 500,
+        from: queryFrom,
+        to: queryTo,
+      }),
     enabled: !!id,
   });
 
-  const { data: paymentsRes } = useQuery({
-    queryKey: ['customer-payments', id],
-    queryFn: () => paymentService.findPaginated({ customerId: id, limit: 10 }),
+  const { data: paymentsRes, isLoading: paymentsLoading } = useQuery({
+    queryKey: ['customer-payments', id, queryFrom, queryTo],
+    queryFn: () =>
+      paymentService.findPaginated({
+        customerId: id,
+        limit: 500,
+        from: queryFrom,
+        to: queryTo,
+      }),
     enabled: !!id,
   });
 
   const customer = customerRes?.data;
   const sales = salesRes?.data || [];
   const payments = paymentsRes?.data || [];
+  const business = toBusinessProfile(settingsRes?.data);
+
+  const periodTotals = useMemo(
+    () => ({
+      invoiced: sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0),
+      received: payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0),
+    }),
+    [sales, payments],
+  );
+
+  const handlePrint = () => {
+    if (!customer) return;
+    try {
+      printCustomerLedger({
+        customer,
+        sales,
+        payments,
+        from: fromDate,
+        to: toDate,
+        business,
+      });
+      showToast('Print preview is ready. Choose a printer or Save as PDF.', 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Unable to print the ledger right now.', 'error');
+    }
+  };
+
+  const handlePdf = () => {
+    if (!customer) return;
+    try {
+      downloadCustomerLedgerPdf({
+        customer,
+        sales,
+        payments,
+        from: fromDate,
+        to: toDate,
+        business,
+      });
+      showToast('Customer ledger PDF downloaded successfully.', 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Unable to download the PDF right now.', 'error');
+    }
+  };
 
   if (isLoading) {
     return <div className="p-8 text-center text-sm text-slate-500">Loading customer profile...</div>;
@@ -54,21 +134,20 @@ export default function CustomerDetailPage() {
         description={`${customer.company || 'Direct Client'} • Code: ${customer.customerCode}`}
         actions={
           <div className="flex items-center gap-2">
-            <a href="/customers">
+            <Link href="/customers">
               <Button variant="outline" size="sm">
                 <ArrowLeft className="w-4 h-4 mr-1.5" /> Back
               </Button>
-            </a>
-            <a href={`/sales/new?customerId=${customer._id}`}>
+            </Link>
+            <Link href={`/sales/new?customerId=${customer._id}`}>
               <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white">
                 <ShoppingCart className="w-4 h-4 mr-1.5" /> Create Sale
               </Button>
-            </a>
+            </Link>
           </div>
         }
       />
 
-      {/* Balances Summary Banner */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="bg-slate-50/50 dark:bg-slate-900/50">
           <CardContent className="p-5">
@@ -102,7 +181,6 @@ export default function CustomerDetailPage() {
         </Card>
       </div>
 
-      {/* Profile & Info Card */}
       <Card>
         <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
           <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">
@@ -123,8 +201,8 @@ export default function CustomerDetailPage() {
             <p className="font-semibold text-slate-900 dark:text-slate-100 mt-0.5">{customer.taxNumber || '-'}</p>
           </div>
           <div>
-            <span className="text-slate-500">Credit Limit:</span>
-            <p className="font-semibold text-slate-900 dark:text-slate-100 mt-0.5">{formatCurrency(customer.creditLimit)}</p>
+            <span className="text-slate-500">Customer Type:</span>
+            <p className="font-semibold text-slate-900 dark:text-slate-100 mt-0.5">{customer.customerType || '-'}</p>
           </div>
           <div className="sm:col-span-2">
             <span className="text-slate-500">Billing Address:</span>
@@ -135,27 +213,72 @@ export default function CustomerDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Purchase Orders and Payment Ledgers */}
+      <Card>
+        <CardContent className="p-4 flex flex-col lg:flex-row lg:items-end gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
+            <Input
+              type="date"
+              label="From Date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+            />
+            <Input
+              type="date"
+              label="To Date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setFromDate('');
+                setToDate('');
+              }}
+            >
+              All Dates
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handlePdf}
+              className="gap-1.5 bg-red-600 hover:bg-red-700 text-white"
+            >
+              <FileDown className="h-4 w-4" /> Download PDF
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Sales Invoices */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Invoices / Orders</CardTitle>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Invoices / Orders</CardTitle>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Period total: {formatCurrency(periodTotals.invoiced)}
+              </p>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {sales.length === 0 ? (
-                <div className="py-6 text-center text-xs text-slate-400">No invoices yet</div>
+              {salesLoading ? (
+                <div className="py-6 text-center text-xs text-slate-400">Loading invoices...</div>
+              ) : sales.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400">No invoices in this date range</div>
               ) : (
                 sales.map((sale) => (
                   <div key={sale._id} className="py-3 flex items-center justify-between text-xs">
                     <div>
-                      <a
-                        href={`/sales/${sale._id}`}
-                        className="font-bold text-red-600 hover:underline"
-                      >
+                      <Link href={`/sales/${sale._id}`} className="font-bold text-red-600 hover:underline">
                         {sale.invoiceNumber}
-                      </a>
+                      </Link>
                       <p className="text-[11px] text-slate-500">{formatDate(sale.saleDate)}</p>
                     </div>
                     <div className="text-right">
@@ -178,15 +301,19 @@ export default function CustomerDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Payments History */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Payment Receipts</CardTitle>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Period total: {formatCurrency(periodTotals.received)}
+            </p>
           </CardHeader>
           <CardContent>
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {payments.length === 0 ? (
-                <div className="py-6 text-center text-xs text-slate-400">No payments recorded</div>
+              {paymentsLoading ? (
+                <div className="py-6 text-center text-xs text-slate-400">Loading receipts...</div>
+              ) : payments.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400">No payments in this date range</div>
               ) : (
                 payments.map((pmt) => (
                   <div key={pmt._id} className="py-3 flex items-center justify-between text-xs">

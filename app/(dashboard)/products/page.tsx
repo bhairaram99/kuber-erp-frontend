@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Eye, Edit2, Trash2, TreePine, AlertTriangle } from 'lucide-react';
 import { productService } from '../../../services/product.service';
@@ -57,12 +58,12 @@ export default function ProductsPage() {
       header: 'Product & SKU',
       cell: (row) => (
         <div>
-          <a
+          <Link
             href={`/products/${row._id}`}
             className="font-bold text-slate-900 dark:text-slate-100 hover:text-red-600 transition"
           >
             {row.name}
-          </a>
+          </Link>
           <p className="text-xs text-slate-500 font-mono">
             {row.sku} {row.barcode ? `• Barcode: ${row.barcode}` : ''}
           </p>
@@ -148,21 +149,21 @@ export default function ProductsPage() {
       header: 'Actions',
       cell: (row) => (
         <div className="flex items-center gap-2">
-          <a
+          <Link
             href={`/products/${row._id}`}
             className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
             title="View Details"
           >
             <Eye className="w-4 h-4" />
-          </a>
+          </Link>
           <PermissionGuard permission={PERMISSIONS.PRODUCTS_UPDATE}>
-            <a
+            <Link
               href={`/products/${row._id}/edit`}
               className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-red-600"
               title="Edit Product"
             >
               <Edit2 className="w-4 h-4" />
-            </a>
+            </Link>
           </PermissionGuard>
           <PermissionGuard permission={PERMISSIONS.PRODUCTS_DELETE}>
             <button
@@ -185,12 +186,12 @@ export default function ProductsPage() {
         description="Comprehensive catalog of timber logs, planks, plywood, and veneers with physical specs and pricing."
         actions={
           <PermissionGuard permission={PERMISSIONS.PRODUCTS_CREATE}>
-            <a href="/products/new">
+            <Link href="/products/new">
               <Button className="bg-red-600 hover:bg-red-700 text-white font-medium">
                 <Plus className="w-4 h-4 mr-1.5" />
                 Add New Wood Material
               </Button>
-            </a>
+            </Link>
           </PermissionGuard>
         }
       />

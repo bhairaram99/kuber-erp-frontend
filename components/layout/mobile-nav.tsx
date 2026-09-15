@@ -28,7 +28,7 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
         >
           <X className="h-5 w-5" />
         </button>
-        <Sidebar className="w-full border-r-0" />
+        <Sidebar className="w-full border-r-0" onNavigate={onClose} />
       </div>
     </div>
   );

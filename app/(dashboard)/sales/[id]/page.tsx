@@ -8,18 +8,20 @@ import {
   Printer,
   Ban,
   Building2,
-  Calendar,
   CreditCard,
   AlertCircle,
-  FileText,
+  FileDown,
 } from 'lucide-react';
 import { salesService } from '../../../../services/sales.service';
+import { settingService } from '../../../../services/setting.service';
 import { PageHeader } from '../../../../components/common/page-header';
 import { Button } from '../../../../components/ui/button';
 import { Badge } from '../../../../components/ui/badge';
 import { Card } from '../../../../components/ui/card';
-import { formatCurrency, formatDate, formatDateTime } from '../../../../lib/utils';
+import { formatCurrency, formatDate } from '../../../../lib/utils';
+import { downloadSaleInvoicePdf, printSaleInvoice, toBusinessProfile } from '../../../../lib/documents';
 import { useAuth } from '../../../../providers/auth-provider';
+import { useToast } from '../../../../providers/toast-provider';
 import { PERMISSIONS } from '../../../../lib/permissions';
 
 export default function SaleDetailPage() {
@@ -27,12 +29,18 @@ export default function SaleDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { hasPermission } = useAuth();
+  const { showToast } = useToast();
   const saleId = params.id as string;
   const [cancelError, setCancelError] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['sale', saleId],
     queryFn: () => salesService.findById(saleId),
+  });
+
+  const { data: settingsRes } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => settingService.getSettings(),
   });
 
   const cancelMutation = useMutation({
@@ -47,6 +55,7 @@ export default function SaleDetailPage() {
   });
 
   const sale = (data as any)?.data;
+  const business = toBusinessProfile(settingsRes?.data);
 
   if (isLoading) {
     return (
@@ -89,10 +98,32 @@ export default function SaleDetailPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.print()}
+              onClick={() => {
+                try {
+                  printSaleInvoice(sale, business);
+                  showToast('Print preview is ready. Choose a printer or Save as PDF.', 'success');
+                } catch (error: any) {
+                  showToast(error?.message || 'Unable to print this invoice right now.', 'error');
+                }
+              }}
               className="gap-1.5"
             >
               <Printer className="h-4 w-4" /> Print
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                try {
+                  downloadSaleInvoicePdf(sale, business);
+                  showToast('Invoice PDF downloaded successfully.', 'success');
+                } catch (error: any) {
+                  showToast(error?.message || 'Unable to download the PDF right now.', 'error');
+                }
+              }}
+              className="gap-1.5"
+            >
+              <FileDown className="h-4 w-4" /> PDF
             </Button>
             {sale.status !== 'CANCELLED' &&
               hasPermission(PERMISSIONS.SALES_CANCEL) && (

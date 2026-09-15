@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Bell, LogOut, Menu, User, Shield, Check } from 'lucide-react';
 import { useAuth } from '../../providers/auth-provider';
 import { notificationService } from '../../services/setting.service';
@@ -164,13 +165,13 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
               </div>
 
               <div className="py-1">
-                <a
+                <Link
                   href="/settings"
                   className="flex items-center gap-2 px-4 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   <Shield className="h-3.5 w-3.5 text-slate-400" />
                   Role & Permissions
-                </a>
+                </Link>
               </div>
 
               <div className="border-t border-slate-100 dark:border-slate-800 pt-1">
