@@ -5,12 +5,13 @@ import { useAuth } from '../../../providers/auth-provider';
 import { Input } from '../../../components/ui/input';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
-import { LogIn, ShieldAlert, Sparkles } from 'lucide-react';
+import { LogIn, ShieldAlert, Sparkles, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -45,16 +46,13 @@ export default function LoginPage() {
     <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-red-50/20 to-slate-100">
       <div className="w-full max-w-md space-y-6">
         {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex h-20 w-auto p-3 items-center justify-center rounded-2xl bg-white shadow-xl mb-1 border border-slate-200">
-            <img src="/logo.png" alt="Kuber Plywood" className="h-full w-auto object-contain max-h-14" />
+        <div className="text-center space-y-3">
+          <div className="inline-flex h-36 w-36 p-4 items-center justify-center rounded-3xl bg-white shadow-xl border border-slate-200">
+            <img src="/logo.png" alt="Kuber Plywood" className="h-full w-full object-contain" />
           </div>
           <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
             KUBER PLYWOOD ERP
           </h1>
-          <p className="text-xs text-[#5D7789] font-medium">
-            Production Management, Inventory, Sales & Financial Accounting
-          </p>
         </div>
 
         {/* Login Card */}
@@ -86,12 +84,22 @@ export default function LoginPage() {
 
               <Input
                 label="Password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-[#E11F2B] focus:ring-[#E11F2B]/20"
+                endAdornment={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((current) => !current)}
+                    className="p-1 text-slate-400 hover:text-slate-700"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                }
               />
 
               <Button

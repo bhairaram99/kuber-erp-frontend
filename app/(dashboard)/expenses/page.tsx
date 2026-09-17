@@ -2,14 +2,13 @@
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Receipt, Plus, Trash2, Search, Check, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Check, AlertCircle } from 'lucide-react';
 import { expenseService } from '../../../services/expense.service';
 import { PageHeader } from '../../../components/common/page-header';
 import { DataTable } from '../../../components/common/data-table';
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
 import { Input } from '../../../components/ui/input';
-import { Card } from '../../../components/ui/card';
 import { formatCurrency, formatDate } from '../../../lib/utils';
 import { useAuth } from '../../../providers/auth-provider';
 import { PERMISSIONS } from '../../../lib/permissions';
@@ -42,16 +41,10 @@ export default function ExpensesPage() {
       }),
   });
 
-  const { data: breakdownData } = useQuery({
-    queryKey: ['expenses-breakdown'],
-    queryFn: () => expenseService.getCategoryBreakdown(),
-  });
-
   const createMutation = useMutation({
     mutationFn: (payload: any) => expenseService.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
-      queryClient.invalidateQueries({ queryKey: ['expenses-breakdown'] });
       setIsModalOpen(false);
       resetForm();
     },
@@ -64,7 +57,6 @@ export default function ExpensesPage() {
     mutationFn: (id: string) => expenseService.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
-      queryClient.invalidateQueries({ queryKey: ['expenses-breakdown'] });
     },
   });
 
@@ -93,8 +85,6 @@ export default function ExpensesPage() {
       description,
     });
   };
-
-  const breakdown = (breakdownData as any)?.data || [];
 
   const columns = [
     {
@@ -192,25 +182,6 @@ export default function ExpensesPage() {
           ) : undefined
         }
       />
-
-      {/* Category Breakdown Cards */}
-      {breakdown.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {breakdown.slice(0, 4).map((b: any) => (
-            <Card key={b._id} className="p-4 space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                {b._id || 'GENERAL'}
-              </span>
-              <p className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                {formatCurrency(b.totalAmount)}
-              </p>
-              <span className="text-[10px] text-slate-500 block">
-                {b.count} transactions
-              </span>
-            </Card>
-          ))}
-        </div>
-      )}
 
       {/* Filter Bar */}
       <div className="flex gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">

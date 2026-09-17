@@ -20,12 +20,30 @@ import {
   ShieldCheck,
   ScrollText,
   Settings,
+  History,
+  ClipboardList,
+  type LucideIcon,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../providers/auth-provider';
 import { PERMISSIONS } from '../../lib/permissions';
 
-const navSections = [
+type NavChild = {
+  title: string;
+  href: string;
+  icon: LucideIcon;
+  permission: string;
+};
+
+type NavItem = {
+  title: string;
+  href?: string;
+  icon: LucideIcon;
+  permission: string;
+  children?: NavChild[];
+};
+
+const navSections: { title: string; items: NavItem[] }[] = [
   {
     title: 'Core Business',
     items: [
@@ -49,9 +67,22 @@ const navSections = [
       },
       {
         title: 'Inventory & Stock',
-        href: '/inventory',
         icon: Boxes,
         permission: PERMISSIONS.INVENTORY_VIEW,
+        children: [
+          {
+            title: 'Stock Management',
+            href: '/inventory',
+            icon: ClipboardList,
+            permission: PERMISSIONS.INVENTORY_VIEW,
+          },
+          {
+            title: 'Stock Ledger',
+            href: '/inventory/ledger',
+            icon: History,
+            permission: PERMISSIONS.INVENTORY_VIEW,
+          },
+        ],
       },
     ],
   },
@@ -71,7 +102,7 @@ const navSections = [
         permission: PERMISSIONS.PURCHASES_VIEW,
       },
       {
-        title: 'Customers',
+        title: 'Customer Ledger',
         href: '/customers',
         icon: Users,
         permission: PERMISSIONS.CUSTOMERS_VIEW,
@@ -144,6 +175,12 @@ const navSections = [
   },
 ];
 
+function isHrefActive(pathname: string, href: string) {
+  if (href === '/dashboard') return pathname === '/dashboard';
+  if (href === '/inventory') return pathname === '/inventory';
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function Sidebar({
   className,
   onNavigate,
@@ -161,14 +198,9 @@ export function Sidebar({
         className,
       )}
     >
-      {/* Brand Header */}
       <div className="h-16 flex items-center px-4 border-b border-slate-800 gap-3">
         <div className="h-10 w-10 rounded-lg bg-white p-1 flex items-center justify-center shrink-0 shadow-md border border-slate-700/50 overflow-hidden">
-          <img
-            src="/logo.png"
-            alt="Kuber Plywood Logo"
-            className="h-full w-full object-contain"
-          />
+          <img src="/logo.png" alt="Kuber Plywood Logo" className="h-full w-full object-contain" />
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="font-extrabold text-sm tracking-tight text-white leading-tight truncate">
@@ -180,13 +212,9 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Navigation Links */}
       <nav className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin">
         {navSections.map((section, secIdx) => {
-          const visibleItems = section.items.filter((item) =>
-            hasPermission(item.permission),
-          );
-
+          const visibleItems = section.items.filter((item) => hasPermission(item.permission));
           if (visibleItems.length === 0) return null;
 
           return (
@@ -196,14 +224,57 @@ export function Sidebar({
               </h3>
               {visibleItems.map((item) => {
                 const Icon = item.icon;
-                const isActive =
-                  pathname === item.href ||
-                  (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                const children = (item.children || []).filter((child) =>
+                  hasPermission(child.permission),
+                );
 
+                if (children.length > 0) {
+                  const groupActive = children.some((child) => isHrefActive(pathname, child.href));
+                  return (
+                    <div key={item.title} className="space-y-1">
+                      <div
+                        className={cn(
+                          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium',
+                          groupActive ? 'text-white' : 'text-slate-300',
+                        )}
+                      >
+                        <Icon
+                          className={cn('h-4 w-4 shrink-0', groupActive ? 'text-red-400' : 'text-slate-400')}
+                        />
+                        <span className="truncate">{item.title}</span>
+                      </div>
+                      <div className="ml-4 space-y-1 border-l border-slate-800 pl-2">
+                        {children.map((child) => {
+                          const ChildIcon = child.icon;
+                          const childActive = isHrefActive(pathname, child.href);
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              onClick={onNavigate}
+                              prefetch
+                              className={cn(
+                                'flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-150',
+                                childActive
+                                  ? 'bg-red-600 text-white shadow-sm font-semibold'
+                                  : 'text-slate-400 hover:text-white hover:bg-slate-800',
+                              )}
+                            >
+                              <ChildIcon className={cn('h-3.5 w-3.5 shrink-0', childActive ? 'text-white' : 'text-slate-500')} />
+                              <span className="truncate">{child.title}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }
+
+                const isActive = item.href ? isHrefActive(pathname, item.href) : false;
                 return (
                   <Link
                     key={item.href}
-                    href={item.href}
+                    href={item.href || '#'}
                     onClick={onNavigate}
                     prefetch
                     className={cn(
@@ -223,7 +294,6 @@ export function Sidebar({
         })}
       </nav>
 
-      {/* Footer Info */}
       <div className="p-4 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between">
         <span>v1.0.0 Production</span>
         <span className="h-2 w-2 rounded-full bg-emerald-500"></span>

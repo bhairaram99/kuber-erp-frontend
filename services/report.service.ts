@@ -2,8 +2,8 @@ import { apiClient } from '../lib/api/client';
 import { DashboardSummary, ProfitAndLossReport } from '../types';
 
 export const reportService = {
-  getDashboardSummary: async (): Promise<{ data: DashboardSummary }> => {
-    return apiClient.get('/reports/dashboard');
+  getDashboardSummary: async (days?: number): Promise<{ data: DashboardSummary }> => {
+    return apiClient.get('/reports/dashboard', { params: days ? { days } : undefined });
   },
 
   getProfitAndLoss: async (params?: { from?: string; to?: string }): Promise<{ data: ProfitAndLossReport }> => {

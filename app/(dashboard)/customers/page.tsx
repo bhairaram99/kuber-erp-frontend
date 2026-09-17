@@ -108,7 +108,7 @@ export default function CustomersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Customer Accounts & Ledgers"
+        title="Customer Ledger"
         description="Track furniture makers, contractors, wholesale buyers, order volumes, and payment balances."
         actions={
           <PermissionGuard permission={PERMISSIONS.CUSTOMERS_CREATE}>

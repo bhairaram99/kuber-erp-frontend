@@ -9,7 +9,9 @@ interface StatCardProps {
   isPositive?: boolean;
   icon: React.ReactNode;
   subtitle?: string;
+  extra?: React.ReactNode;
   className?: string;
+  onClick?: () => void;
 }
 
 export function StatCard({
@@ -19,10 +21,31 @@ export function StatCard({
   isPositive,
   icon,
   subtitle,
+  extra,
   className,
+  onClick,
 }: StatCardProps) {
   return (
-    <Card className={cn('overflow-hidden', className)}>
+    <Card
+      className={cn(
+        'overflow-hidden',
+        onClick && 'cursor-pointer transition hover:border-red-300 hover:shadow-md',
+        className,
+      )}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+    >
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -51,6 +74,7 @@ export function StatCard({
               {subtitle && <span>{subtitle}</span>}
             </div>
           )}
+          {extra}
         </div>
       </CardContent>
     </Card>
