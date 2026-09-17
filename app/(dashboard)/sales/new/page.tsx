@@ -18,7 +18,7 @@ interface LineItem {
   productId: string;
   product?: Product;
   quantity: number | '';
-  sellingPrice: number;
+  sellingPrice: number | '';
   discount: number;
   taxPercentage: number;
 }
@@ -81,9 +81,14 @@ export default function NewSalePage() {
     setItems(newItems);
   };
 
-  const handlePriceChange = (index: number, price: number) => {
+  const handlePriceChange = (index: number, raw: string) => {
     const newItems = [...items];
-    newItems[index].sellingPrice = Math.max(0, price);
+    if (raw === '') {
+      newItems[index].sellingPrice = '';
+    } else {
+      const price = Number(raw);
+      newItems[index].sellingPrice = Number.isNaN(price) ? '' : Math.max(0, price);
+    }
     setItems(newItems);
   };
 
@@ -115,7 +120,7 @@ export default function NewSalePage() {
   // Calculations
   const lineSubtotals = items.map((item) => {
     const quantity = Number(item.quantity) || 0;
-    const gross = quantity * item.sellingPrice;
+    const gross = quantity * (Number(item.sellingPrice) || 0);
     const discounted = gross - (gross * (item.discount || 0)) / 100;
     const tax = (discounted * (item.taxPercentage || 0)) / 100;
     return { gross, discounted, tax, total: discounted + tax };
@@ -343,9 +348,8 @@ export default function NewSalePage() {
                           min="0"
                           step="any"
                           value={item.sellingPrice}
-                          onChange={(e) =>
-                            handlePriceChange(idx, Number(e.target.value))
-                          }
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => handlePriceChange(idx, e.target.value)}
                           className="h-8 text-xs w-28"
                         />
                       </td>
@@ -417,10 +421,6 @@ export default function NewSalePage() {
                   <span>-{formatCurrency(totalLineDiscount)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                <span>Estimated Tax (GST)</span>
-                <span className="font-semibold">+{formatCurrency(totalTax)}</span>
-              </div>
               <div className="flex items-center justify-between gap-4 pt-1">
                 <span className="text-slate-600 dark:text-slate-400">Overall Discount (₹)</span>
                 <Input

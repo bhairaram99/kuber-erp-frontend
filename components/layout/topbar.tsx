@@ -58,9 +58,6 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <div>
-          <span className="text-xs text-slate-700 dark:text-slate-300 font-bold tracking-tight">Kuber Plywood Mart</span>
-        </div>
       </div>
 
       {/* Right side: Notifications & User Menu */}

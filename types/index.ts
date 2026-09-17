@@ -308,6 +308,7 @@ export interface DashboardSummary {
     currentStockValue: number;
     lowStockCount: number;
     totalCustomers: number;
+    customerOutstanding: number;
   };
   salesTrend: Array<{ _id: string; sales: number }>;
   recentSales: Sale[];
@@ -320,6 +321,12 @@ export interface DashboardSummary {
     minimumStock: number;
     unit: string;
     location: string;
+    woodType?: string;
+    grade?: string;
+    thickness?: number;
+    width?: number;
+    length?: number;
+    categoryId?: { _id: string; name: string } | string;
   }>;
 }
 

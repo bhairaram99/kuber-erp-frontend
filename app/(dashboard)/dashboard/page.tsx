@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -11,7 +11,6 @@ import {
   AlertTriangle,
   Receipt,
   ShoppingCart,
-  ShoppingBag,
   ArrowUpRight,
 } from 'lucide-react';
 import {
@@ -28,16 +27,44 @@ import { PageHeader } from '../../../components/common/page-header';
 import { StatCard } from '../../../components/common/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
+import { Dialog } from '../../../components/ui/dialog';
+import { DashboardSummary } from '../../../types';
 import { formatCurrency, formatDate } from '../../../lib/utils';
 
+const TREND_PERIODS = [
+  { label: '7 Days', days: 7 },
+  { label: '14 Days', days: 14 },
+  { label: '1 Month', days: 30 },
+  { label: '3 Months', days: 90 },
+] as const;
+
+type LowStockItem = DashboardSummary['lowStockItems'][number];
+
+function sheetSpec(item: LowStockItem): string {
+  const size = [item.thickness, item.width, item.length].filter((value) => Number(value) > 0);
+  return size.length ? `${size.join('×')} mm` : '';
+}
+
+function productTypeLabel(item: LowStockItem): string {
+  const category =
+    item.categoryId && typeof item.categoryId === 'object' ? item.categoryId.name : '';
+  return [item.woodType, item.grade, category, sheetSpec(item)].filter(Boolean).join(' • ');
+}
+
 export default function DashboardPage() {
-  const { data: summaryRes, isLoading } = useQuery({
-    queryKey: ['dashboard-summary'],
-    queryFn: () => reportService.getDashboardSummary(),
+  const [trendDays, setTrendDays] = useState<(typeof TREND_PERIODS)[number]['days']>(14);
+  const [lowStockOpen, setLowStockOpen] = useState(false);
+
+  const { data: summaryRes, isFetching } = useQuery({
+    queryKey: ['dashboard-summary', trendDays],
+    queryFn: () => reportService.getDashboardSummary(trendDays),
+    placeholderData: (previous) => previous,
   });
 
   const summary = summaryRes?.data;
   const kpi = summary?.kpi;
+  const lowStockItems = summary?.lowStockItems || [];
+  const selectedPeriod = TREND_PERIODS.find((period) => period.days === trendDays);
 
   return (
     <div className="space-y-6">
@@ -46,7 +73,6 @@ export default function DashboardPage() {
         description="Real-time operational health, timber inventory valuation, and sales metrics."
       />
 
-      {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Sales"
@@ -54,6 +80,14 @@ export default function DashboardPage() {
           icon={<ShoppingCart className="h-5 w-5" />}
           change="Real-time Revenue"
           isPositive={true}
+          extra={
+            <p className="mt-2 text-xs text-slate-500">
+              Customer outstanding{' '}
+              <span className="font-semibold text-rose-600 dark:text-rose-400">
+                {formatCurrency(kpi?.customerOutstanding)}
+              </span>
+            </p>
+          }
         />
         <StatCard
           title="Gross Profit"
@@ -88,8 +122,9 @@ export default function DashboardPage() {
           title="Low Stock Alerts"
           value={kpi?.lowStockCount ?? 0}
           icon={<AlertTriangle className="h-5 w-5" />}
-          subtitle="Items Below Threshold"
+          subtitle={kpi?.lowStockCount ? 'Click to see sheets & types' : 'Items Below Threshold'}
           className={kpi?.lowStockCount ? 'border-amber-400 dark:border-amber-700' : ''}
+          onClick={() => setLowStockOpen(true)}
         />
         <StatCard
           title="Active Customers"
@@ -99,18 +134,31 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Sales Trend Chart & Low Stock Items */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Sales Trend Area Chart */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center justify-between">
+            <CardTitle className="text-base flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <span>Sales Revenue Trajectory</span>
-              <Badge variant="outline">Last 14 Days</Badge>
+              <div className="flex flex-wrap gap-1.5">
+                {TREND_PERIODS.map((period) => (
+                  <button
+                    key={period.days}
+                    type="button"
+                    onClick={() => setTrendDays(period.days)}
+                    className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+                      trendDays === period.days
+                        ? 'border-red-600 bg-red-600 text-white'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-red-200 hover:text-red-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                    }`}
+                  >
+                    {period.label}
+                  </button>
+                ))}
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-72 w-full pt-4">
+            <div className={`h-72 w-full pt-4 ${isFetching ? 'opacity-60' : ''}`}>
               {summary?.salesTrend && summary.salesTrend.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={summary.salesTrend}>
@@ -125,11 +173,15 @@ export default function DashboardPage() {
                     <YAxis
                       tickLine={false}
                       tick={{ fontSize: 11 }}
-                      tickFormatter={(val) => `₹${val / 1000}k`}
+                      tickFormatter={(val) =>
+                        val >= 1000 ? `₹${(val / 1000).toFixed(val >= 10000 ? 0 : 1)}k` : `₹${val}`
+                      }
                     />
                     <Tooltip
                       formatter={(val: any) => [formatCurrency(val), 'Revenue']}
-                      labelFormatter={(label) => `Date: ${label}`}
+                      labelFormatter={(label) =>
+                        trendDays > 31 ? `Week of ${label}` : `Date: ${label}`
+                      }
                     />
                     <Area
                       type="monotone"
@@ -147,54 +199,72 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+            <p className="pt-2 text-[11px] text-slate-400">
+              Showing {selectedPeriod?.label.toLowerCase()}
+              {trendDays > 31 ? ' (weekly totals).' : '.'}
+            </p>
           </CardContent>
         </Card>
 
-        {/* Low Stock Attention List */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center justify-between">
-              <span>Low Stock Timber</span>
+              <button
+                type="button"
+                onClick={() => setLowStockOpen(true)}
+                className="hover:text-red-600 transition"
+              >
+                Low Stock Timber
+              </button>
               <Badge variant="destructive">Needs Restock</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3 pt-2">
-              {summary?.lowStockItems && summary.lowStockItems.length > 0 ? (
-                summary.lowStockItems.map((item) => (
-                  <div
+              {lowStockItems.length > 0 ? (
+                lowStockItems.slice(0, 5).map((item) => (
+                  <button
                     key={item._id}
-                    className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between"
+                    type="button"
+                    onClick={() => setLowStockOpen(true)}
+                    className="w-full text-left p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between hover:border-amber-300 transition"
                   >
-                    <div>
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    <div className="min-w-0 pr-3">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                         {item.name}
                       </p>
-                      <p className="text-[11px] text-slate-500">
-                        SKU: {item.sku} • {item.location}
+                      <p className="text-[11px] text-slate-500 truncate">
+                        {productTypeLabel(item) || `SKU: ${item.sku}`}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                       <span className="text-xs font-extrabold text-rose-600">
                         {item.currentStock} {item.unit}
                       </span>
                       <p className="text-[10px] text-slate-400">Min: {item.minimumStock}</p>
                     </div>
-                  </div>
+                  </button>
                 ))
               ) : (
                 <div className="py-8 text-center text-xs text-emerald-600 font-medium">
                   ✅ All inventory stock levels are healthy!
                 </div>
               )}
+              {lowStockItems.length > 5 && (
+                <button
+                  type="button"
+                  onClick={() => setLowStockOpen(true)}
+                  className="w-full text-center text-xs font-medium text-red-600 hover:underline"
+                >
+                  View all {lowStockItems.length} low-stock items
+                </button>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Sales & Purchases Table */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Sales */}
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-base">Recent Sales Invoices</CardTitle>
@@ -244,7 +314,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Recent Purchases */}
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-base">Recent Purchase Orders</CardTitle>
@@ -284,6 +353,49 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog
+        isOpen={lowStockOpen}
+        onClose={() => setLowStockOpen(false)}
+        title="Low Stock Sheets & Types"
+        description="Products at or below the minimum stock level, with wood type and sheet size."
+        maxWidth="2xl"
+      >
+        {lowStockItems.length > 0 ? (
+          <div className="space-y-3">
+            {lowStockItems.map((item) => (
+              <Link
+                key={item._id}
+                href={`/products/${item._id}`}
+                onClick={() => setLowStockOpen(false)}
+                className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 dark:border-slate-800 p-3 hover:border-amber-400 hover:bg-amber-50/40 dark:hover:bg-amber-950/20 transition"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {item.name}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {productTypeLabel(item) || 'Type not specified'}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-slate-400">
+                    SKU: {item.sku} {item.location ? `• ${item.location}` : ''}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-extrabold text-rose-600">
+                    {item.currentStock} {item.unit}
+                  </p>
+                  <p className="text-[11px] text-slate-400">Min: {item.minimumStock}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="py-6 text-center text-sm text-emerald-600 font-medium">
+            All inventory stock levels are healthy.
+          </p>
+        )}
+      </Dialog>
     </div>
   );
 }
