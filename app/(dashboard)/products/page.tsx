@@ -65,7 +65,7 @@ export default function ProductsPage() {
             {row.name}
           </Link>
           <p className="text-xs text-slate-500 font-mono">
-            {row.sku} {row.barcode ? `• Barcode: ${row.barcode}` : ''}
+            {row.sku}
           </p>
         </div>
       ),

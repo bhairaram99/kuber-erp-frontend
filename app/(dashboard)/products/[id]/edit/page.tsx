@@ -152,69 +152,9 @@ export default function EditProductPage() {
               ))}
             </Select>
             <Input
-              label="Barcode"
-              value={formData.barcode}
-              onChange={(e) => handleChange('barcode', e.target.value)}
-            />
-            <div className="md:col-span-2">
-              <Input
-                label="Description"
-                value={formData.description}
-                onChange={(e) => handleChange('description', e.target.value)}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">
-              2. Physical & Lumber Specs
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            <Input
-              label="Wood Type"
-              value={formData.woodType}
-              onChange={(e) => handleChange('woodType', e.target.value)}
-            />
-            <Input
-              label="Grade"
-              value={formData.grade}
-              onChange={(e) => handleChange('grade', e.target.value)}
-            />
-            <Input
-              label="Unit"
-              value={formData.unit}
-              onChange={(e) => handleChange('unit', e.target.value)}
-            />
-            <Input
-              label="Quality"
-              value={formData.quality}
-              onChange={(e) => handleChange('quality', e.target.value)}
-            />
-            <Input
-              label="Thickness (mm)"
-              type="number"
-              value={formData.thickness}
-              onChange={(e) => handleChange('thickness', Number(e.target.value))}
-            />
-            <Input
-              label="Width (mm)"
-              type="number"
-              value={formData.width}
-              onChange={(e) => handleChange('width', Number(e.target.value))}
-            />
-            <Input
-              label="Length (mm)"
-              type="number"
-              value={formData.length}
-              onChange={(e) => handleChange('length', Number(e.target.value))}
-            />
-            <Input
-              label="Finish"
-              value={formData.finish}
-              onChange={(e) => handleChange('finish', e.target.value)}
+              label="Company Name"
+              value={formData.brand}
+              onChange={(e) => handleChange('brand', e.target.value)}
             />
           </CardContent>
         </Card>
@@ -222,10 +162,10 @@ export default function EditProductPage() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">
-              3. Pricing & Tax
+              2. Commercial Pricing
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <Input
               label="Purchase / Cost (₹) *"
               type="number"
@@ -246,19 +186,13 @@ export default function EditProductPage() {
               value={formData.wholesalePrice}
               onChange={(e) => handleChange('wholesalePrice', Number(e.target.value))}
             />
-            <Input
-              label="Tax Rate (%)"
-              type="number"
-              value={formData.taxPercentage}
-              onChange={(e) => handleChange('taxPercentage', Number(e.target.value))}
-            />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">
-              4. Inventory Thresholds & Storage
+              3. Inventory Thresholds & Storage
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
@@ -267,12 +201,6 @@ export default function EditProductPage() {
               type="number"
               value={formData.minimumStock}
               onChange={(e) => handleChange('minimumStock', Number(e.target.value))}
-            />
-            <Input
-              label="Maximum Stock"
-              type="number"
-              value={formData.maximumStock}
-              onChange={(e) => handleChange('maximumStock', Number(e.target.value))}
             />
             <Input
               label="Location"

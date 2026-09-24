@@ -19,9 +19,8 @@ export default function NewProductPage() {
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
-    barcode: '',
     categoryId: '',
-    description: '',
+    brand: '',
     woodType: 'Teak',
     grade: 'A-Grade',
     quality: 'Premium Export',
@@ -31,14 +30,12 @@ export default function NewProductPage() {
     unit: 'cft',
     color: 'Golden Brown',
     finish: 'Rough Sawn',
-    brand: 'Generic',
     purchasePrice: 400,
     sellingPrice: 600,
     wholesalePrice: 550,
-    taxPercentage: 18,
+    taxPercentage: 0,
     openingStock: 50,
     minimumStock: 10,
-    maximumStock: 500,
     location: 'Yard A - Bay 1',
     status: 'ACTIVE',
     notes: '',
@@ -142,95 +139,22 @@ export default function NewProductPage() {
             </Select>
 
             <Input
-              label="Barcode / Tag"
-              placeholder="e.g. 8901234567890"
-              value={formData.barcode}
-              onChange={(e) => handleChange('barcode', e.target.value)}
-            />
-            <div className="md:col-span-2">
-              <Input
-                label="Description"
-                placeholder="Grade details, provenance, seasoning..."
-                value={formData.description}
-                onChange={(e) => handleChange('description', e.target.value)}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Section 2: Wood Attributes & Physical Specs */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">
-              2. Wood & Lumber Specifications
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            <Input
-              label="Wood Species / Type"
-              placeholder="e.g. Teak, Pine, Oak, Walnut"
-              value={formData.woodType}
-              onChange={(e) => handleChange('woodType', e.target.value)}
-            />
-            <Input
-              label="Lumber Grade"
-              placeholder="e.g. A-Grade, FAS, Select"
-              value={formData.grade}
-              onChange={(e) => handleChange('grade', e.target.value)}
-            />
-            <Input
-              label="Quality Tier"
-              placeholder="e.g. Export, Premium, Commercial"
-              value={formData.quality}
-              onChange={(e) => handleChange('quality', e.target.value)}
-            />
-            <Select
-              label="Stock Measurement Unit"
-              value={formData.unit}
-              onChange={(e) => handleChange('unit', e.target.value)}
-            >
-              <option value="cft">Cubic Feet (cft)</option>
-              <option value="sqft">Square Feet (sqft)</option>
-              <option value="piece">Piece / Sheet (piece)</option>
-              <option value="bundle">Bundle</option>
-              <option value="log">Log</option>
-            </Select>
-
-            <Input
-              label="Thickness (mm)"
-              type="number"
-              value={formData.thickness}
-              onChange={(e) => handleChange('thickness', Number(e.target.value))}
-            />
-            <Input
-              label="Width (mm)"
-              type="number"
-              value={formData.width}
-              onChange={(e) => handleChange('width', Number(e.target.value))}
-            />
-            <Input
-              label="Length (mm)"
-              type="number"
-              value={formData.length}
-              onChange={(e) => handleChange('length', Number(e.target.value))}
-            />
-            <Input
-              label="Finish"
-              placeholder="Rough Sawn, Planed S4S, Sanded"
-              value={formData.finish}
-              onChange={(e) => handleChange('finish', e.target.value)}
+              label="Company Name"
+              placeholder="e.g. Kuber Plywood"
+              value={formData.brand}
+              onChange={(e) => handleChange('brand', e.target.value)}
             />
           </CardContent>
         </Card>
 
-        {/* Section 3: Pricing & Taxation */}
+        {/* Section 2: Pricing */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">
-              3. Commercial Pricing & Tax
+              2. Commercial Pricing
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <Input
               label="Purchase / Cost Price (₹) *"
               type="number"
@@ -251,20 +175,14 @@ export default function NewProductPage() {
               value={formData.wholesalePrice}
               onChange={(e) => handleChange('wholesalePrice', Number(e.target.value))}
             />
-            <Input
-              label="GST Tax Rate (%)"
-              type="number"
-              value={formData.taxPercentage}
-              onChange={(e) => handleChange('taxPercentage', Number(e.target.value))}
-            />
           </CardContent>
         </Card>
 
-        {/* Section 4: Initial Inventory & Location */}
+        {/* Section 3: Initial Inventory & Location */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">
-              4. Inventory Baseline & Storage Location
+              3. Inventory Baseline & Storage Location
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
@@ -279,12 +197,6 @@ export default function NewProductPage() {
               type="number"
               value={formData.minimumStock}
               onChange={(e) => handleChange('minimumStock', Number(e.target.value))}
-            />
-            <Input
-              label="Maximum Stock Capacity"
-              type="number"
-              value={formData.maximumStock}
-              onChange={(e) => handleChange('maximumStock', Number(e.target.value))}
             />
             <Input
               label="Yard / Shed Location"
