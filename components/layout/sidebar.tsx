@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -22,6 +22,10 @@ import {
   Settings,
   History,
   ClipboardList,
+  ChevronDown,
+  Store,
+  Landmark,
+  Shield,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -43,7 +47,7 @@ type NavItem = {
   children?: NavChild[];
 };
 
-const navSections: { title: string; items: NavItem[] }[] = [
+const navSections: { title: string; icon?: LucideIcon; collapsible?: boolean; items: NavItem[] }[] = [
   {
     title: 'Core Business',
     items: [
@@ -54,16 +58,16 @@ const navSections: { title: string; items: NavItem[] }[] = [
         permission: PERMISSIONS.DASHBOARD_VIEW,
       },
       {
-        title: 'Products & Wood',
-        href: '/products',
-        icon: TreePine,
-        permission: PERMISSIONS.PRODUCTS_VIEW,
-      },
-      {
         title: 'Categories',
         href: '/categories',
         icon: Layers,
         permission: PERMISSIONS.CATEGORIES_VIEW,
+      },
+      {
+        title: 'Products & Wood',
+        href: '/products',
+        icon: TreePine,
+        permission: PERMISSIONS.PRODUCTS_VIEW,
       },
       {
         title: 'Inventory & Stock',
@@ -88,6 +92,8 @@ const navSections: { title: string; items: NavItem[] }[] = [
   },
   {
     title: 'Commerce & CRM',
+    icon: Store,
+    collapsible: true,
     items: [
       {
         title: 'Sales & Invoices',
@@ -117,6 +123,8 @@ const navSections: { title: string; items: NavItem[] }[] = [
   },
   {
     title: 'Finance & Ledger',
+    icon: Landmark,
+    collapsible: true,
     items: [
       {
         title: 'Central Transactions',
@@ -146,6 +154,8 @@ const navSections: { title: string; items: NavItem[] }[] = [
   },
   {
     title: 'Administration',
+    icon: Shield,
+    collapsible: true,
     items: [
       {
         title: 'Users',
@@ -175,6 +185,13 @@ const navSections: { title: string; items: NavItem[] }[] = [
   },
 ];
 
+function sectionIsActive(pathname: string, items: NavItem[]) {
+  return items.some((item) => {
+    if (item.href && isHrefActive(pathname, item.href)) return true;
+    return (item.children || []).some((child) => isHrefActive(pathname, child.href));
+  });
+}
+
 function isHrefActive(pathname: string, href: string) {
   if (href === '/dashboard') return pathname === '/dashboard';
   if (href === '/inventory') return pathname === '/inventory';
@@ -190,6 +207,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { hasPermission } = useAuth();
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
   return (
     <aside
@@ -212,17 +230,50 @@ export function Sidebar({
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin">
+      <nav className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin">
         {navSections.map((section, secIdx) => {
           const visibleItems = section.items.filter((item) => hasPermission(item.permission));
           if (visibleItems.length === 0) return null;
+          const sectionActive = sectionIsActive(pathname, visibleItems);
+          const expanded = section.collapsible ? (openMenus[section.title] ?? sectionActive) : true;
+          const SectionIcon = section.icon;
 
           return (
             <div key={secIdx} className="space-y-1">
-              <h3 className="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                {section.title}
-              </h3>
-              {visibleItems.map((item) => {
+              {section.collapsible ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenMenus((current) => ({
+                      ...current,
+                      [section.title]: !expanded,
+                    }))
+                  }
+                  aria-expanded={expanded}
+                  className={cn(
+                    'flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 hover:text-white',
+                    sectionActive ? 'text-white' : 'text-slate-300',
+                  )}
+                >
+                  {SectionIcon ? (
+                    <SectionIcon
+                      className={cn('h-4 w-4 shrink-0', sectionActive ? 'text-red-400' : 'text-slate-400')}
+                    />
+                  ) : null}
+                  <span className="truncate flex-1 text-left">{section.title}</span>
+                  <ChevronDown
+                    className={cn(
+                      'h-4 w-4 shrink-0 text-slate-400 transition-transform',
+                      expanded && 'rotate-180',
+                    )}
+                  />
+                </button>
+              ) : (
+                <h3 className="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                  {section.title}
+                </h3>
+              )}
+              {expanded ? visibleItems.map((item) => {
                 const Icon = item.icon;
                 const children = (item.children || []).filter((child) =>
                   hasPermission(child.permission),
@@ -230,42 +281,59 @@ export function Sidebar({
 
                 if (children.length > 0) {
                   const groupActive = children.some((child) => isHrefActive(pathname, child.href));
+                  const expanded = openMenus[item.title] ?? groupActive;
                   return (
                     <div key={item.title} className="space-y-1">
-                      <div
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenMenus((current) => ({
+                            ...current,
+                            [item.title]: !expanded,
+                          }))
+                        }
+                        aria-expanded={expanded}
                         className={cn(
-                          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium',
+                          'flex w-full items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-slate-800 hover:text-white',
                           groupActive ? 'text-white' : 'text-slate-300',
                         )}
                       >
                         <Icon
                           className={cn('h-4 w-4 shrink-0', groupActive ? 'text-red-400' : 'text-slate-400')}
                         />
-                        <span className="truncate">{item.title}</span>
-                      </div>
-                      <div className="ml-4 space-y-1 border-l border-slate-800 pl-2">
-                        {children.map((child) => {
-                          const ChildIcon = child.icon;
-                          const childActive = isHrefActive(pathname, child.href);
-                          return (
-                            <Link
-                              key={child.href}
-                              href={child.href}
-                              onClick={onNavigate}
-                              prefetch
-                              className={cn(
-                                'flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-150',
-                                childActive
-                                  ? 'bg-red-600 text-white shadow-sm font-semibold'
-                                  : 'text-slate-400 hover:text-white hover:bg-slate-800',
-                              )}
-                            >
-                              <ChildIcon className={cn('h-3.5 w-3.5 shrink-0', childActive ? 'text-white' : 'text-slate-500')} />
-                              <span className="truncate">{child.title}</span>
-                            </Link>
-                          );
-                        })}
-                      </div>
+                        <span className="truncate flex-1 text-left">{item.title}</span>
+                        <ChevronDown
+                          className={cn(
+                            'h-4 w-4 shrink-0 text-slate-400 transition-transform',
+                            expanded && 'rotate-180',
+                          )}
+                        />
+                      </button>
+                      {expanded ? (
+                        <div className="ml-4 space-y-1 border-l border-slate-800 pl-2">
+                          {children.map((child) => {
+                            const ChildIcon = child.icon;
+                            const childActive = isHrefActive(pathname, child.href);
+                            return (
+                              <Link
+                                key={child.href}
+                                href={child.href}
+                                onClick={onNavigate}
+                                prefetch
+                                className={cn(
+                                  'flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-150',
+                                  childActive
+                                    ? 'bg-red-600 text-white shadow-sm font-semibold'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-800',
+                                )}
+                              >
+                                <ChildIcon className={cn('h-3.5 w-3.5 shrink-0', childActive ? 'text-white' : 'text-slate-500')} />
+                                <span className="truncate">{child.title}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      ) : null}
                     </div>
                   );
                 }
@@ -288,7 +356,7 @@ export function Sidebar({
                     <span className="truncate">{item.title}</span>
                   </Link>
                 );
-              })}
+              }) : null}
             </div>
           );
         })}

@@ -65,7 +65,7 @@ export default function NewPurchasePage() {
       productId: prodId,
       product: prod,
       purchasePrice: prod?.purchasePrice || 0,
-      taxPercentage: prod?.taxPercentage || 0,
+      taxPercentage: 0,
     };
     setItems(newItems);
   };
@@ -78,6 +78,12 @@ export default function NewPurchasePage() {
       const qty = Number(raw);
       newItems[index].quantity = Number.isNaN(qty) ? '' : Math.max(0, qty);
     }
+    setItems(newItems);
+  };
+
+  const handleTaxChange = (index: number, tax: number) => {
+    const newItems = [...items];
+    newItems[index].taxPercentage = Math.max(0, tax);
     setItems(newItems);
   };
 
@@ -315,9 +321,16 @@ export default function NewPurchasePage() {
                         />
                       </td>
                       <td className="p-2">
-                        <span className="text-slate-600 dark:text-slate-400">
-                          {item.taxPercentage}%
-                        </span>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="any"
+                          value={item.taxPercentage}
+                          onChange={(e) => handleTaxChange(idx, Number(e.target.value))}
+                          className="h-8 text-xs w-16"
+                          aria-label="Tax percent"
+                        />
                       </td>
                       <td className="p-2 text-right font-semibold text-slate-900 dark:text-slate-100">
                         {formatCurrency(lineSubtotals[idx]?.total || 0)}

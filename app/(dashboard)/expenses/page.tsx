@@ -28,6 +28,7 @@ export default function ExpensesPage() {
   const [amount, setAmount] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState('BANK_TRANSFER');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paidBy, setPaidBy] = useState('');
   const [description, setDescription] = useState('');
   const [formError, setFormError] = useState('');
 
@@ -65,6 +66,7 @@ export default function ExpensesPage() {
     setExpCategory('LOGISTICS');
     setAmount(0);
     setPaymentMethod('BANK_TRANSFER');
+    setPaidBy('');
     setDescription('');
     setFormError('');
   };
@@ -82,6 +84,7 @@ export default function ExpensesPage() {
       amount: Number(amount),
       paymentMethod,
       date,
+      paidBy,
       description,
     });
   };
@@ -116,6 +119,15 @@ export default function ExpensesPage() {
       cell: (row: Expense) => (
         <span className="text-xs text-slate-500">
           {formatDate(row.date)}
+        </span>
+      ),
+    },
+    {
+      header: 'Paid By',
+      accessorKey: 'paidBy',
+      cell: (row: Expense) => (
+        <span className="text-xs text-slate-600 dark:text-slate-300">
+          {row.paidBy || '—'}
         </span>
       ),
     },
@@ -308,6 +320,18 @@ export default function ExpensesPage() {
                     className="text-xs"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 block">
+                  Paid By
+                </label>
+                <Input
+                  value={paidBy}
+                  onChange={(e) => setPaidBy(e.target.value)}
+                  placeholder="Name of the person who gave the money"
+                  className="text-xs"
+                />
               </div>
 
               <div>

@@ -252,6 +252,7 @@ export interface Expense {
   date: string;
   paymentMethod: string;
   description?: string;
+  paidBy?: string;
   receipt?: string;
   createdBy?: { _id: string; name: string };
   createdAt?: string;
@@ -313,6 +314,14 @@ export interface DashboardSummary {
   salesTrend: Array<{ _id: string; sales: number }>;
   recentSales: Sale[];
   recentPurchases: Purchase[];
+  outstandingAccounts?: Array<{
+    _id: string;
+    name: string;
+    company?: string;
+    customerType?: string;
+    phone?: string;
+    totalDue: number;
+  }>;
   lowStockItems: Array<{
     _id: string;
     name: string;

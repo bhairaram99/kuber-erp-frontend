@@ -12,6 +12,7 @@ import {
   Receipt,
   ShoppingCart,
   ArrowUpRight,
+  Wallet,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -54,6 +55,7 @@ function productTypeLabel(item: LowStockItem): string {
 export default function DashboardPage() {
   const [trendDays, setTrendDays] = useState<(typeof TREND_PERIODS)[number]['days']>(14);
   const [lowStockOpen, setLowStockOpen] = useState(false);
+  const [outstandingOpen, setOutstandingOpen] = useState(false);
 
   const { data: summaryRes, isFetching } = useQuery({
     queryKey: ['dashboard-summary', trendDays],
@@ -64,6 +66,7 @@ export default function DashboardPage() {
   const summary = summaryRes?.data;
   const kpi = summary?.kpi;
   const lowStockItems = summary?.lowStockItems || [];
+  const outstandingAccounts = summary?.outstandingAccounts || [];
   const selectedPeriod = TREND_PERIODS.find((period) => period.days === trendDays);
 
   return (
@@ -73,21 +76,21 @@ export default function DashboardPage() {
         description="Real-time operational health, timber inventory valuation, and sales metrics."
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+        <StatCard
+          title="Outstanding Balance"
+          value={formatCurrency(kpi?.customerOutstanding)}
+          icon={<Wallet className="h-5 w-5" />}
+          subtitle="Due from shopkeepers & customers"
+          tone="danger"
+          onClick={() => setOutstandingOpen(true)}
+        />
         <StatCard
           title="Total Sales"
           value={formatCurrency(kpi?.totalSales)}
           icon={<ShoppingCart className="h-5 w-5" />}
           change="Real-time Revenue"
           isPositive={true}
-          extra={
-            <p className="mt-2 text-xs text-slate-500">
-              Customer outstanding{' '}
-              <span className="font-semibold text-rose-600 dark:text-rose-400">
-                {formatCurrency(kpi?.customerOutstanding)}
-              </span>
-            </p>
-          }
         />
         <StatCard
           title="Gross Profit"
@@ -353,6 +356,44 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog
+        isOpen={outstandingOpen}
+        onClose={() => setOutstandingOpen(false)}
+        title="Outstanding Balance"
+        description="Money still due from shopkeepers and customers."
+        maxWidth="2xl"
+      >
+        {outstandingAccounts.length > 0 ? (
+          <div className="space-y-3">
+            <div className="rounded-lg bg-red-600 px-4 py-3 text-white">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-red-100">Total due</p>
+              <p className="mt-1 text-2xl font-bold">{formatCurrency(kpi?.customerOutstanding)}</p>
+            </div>
+            {outstandingAccounts.map((account) => (
+              <Link
+                key={account._id}
+                href={`/customers/${account._id}`}
+                onClick={() => setOutstandingOpen(false)}
+                className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 p-3 transition hover:border-red-400 hover:bg-red-50/50 dark:border-slate-800 dark:hover:bg-red-950/20"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{account.name}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {[account.company, account.customerType, account.phone].filter(Boolean).join(' • ') ||
+                      'Customer'}
+                  </p>
+                </div>
+                <p className="shrink-0 text-sm font-extrabold text-red-600">{formatCurrency(account.totalDue)}</p>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="py-6 text-center text-sm font-medium text-emerald-600">
+            No outstanding balance from shopkeepers or customers.
+          </p>
+        )}
+      </Dialog>
 
       <Dialog
         isOpen={lowStockOpen}

@@ -80,7 +80,7 @@ export default function ProductDetailPage() {
                 {product.currentStock} {product.unit}
               </span>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Min: {product.minimumStock} • Max: {product.maximumStock}
+                Min: {product.minimumStock}
               </p>
             </div>
           </CardContent>
@@ -185,7 +185,7 @@ export default function ProductDetailPage() {
         <Card>
           <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
             <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500">
-              Commercial & Tax Rules
+              Commercial Pricing
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 divide-y divide-slate-100 dark:divide-slate-800 text-xs">
@@ -200,10 +200,6 @@ export default function ProductDetailPage() {
             <div className="py-2.5 flex justify-between">
               <span className="text-slate-500">Wholesale Bulk Price</span>
               <span className="font-bold text-slate-800 dark:text-slate-200">{formatCurrency(product.wholesalePrice)}</span>
-            </div>
-            <div className="py-2.5 flex justify-between">
-              <span className="text-slate-500">GST Tax Percentage</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">{product.taxPercentage}%</span>
             </div>
             <div className="py-2.5 flex justify-between">
               <span className="text-slate-500">Unit Margin (Retail - Cost)</span>
