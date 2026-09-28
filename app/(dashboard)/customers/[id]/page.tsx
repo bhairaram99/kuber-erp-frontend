@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../../components
 import { Button } from '../../../../components/ui/button';
 import { Badge } from '../../../../components/ui/badge';
 import { Input } from '../../../../components/ui/input';
-import { formatCurrency, formatDate } from '../../../../lib/utils';
+import { formatCurrency, formatDate, isObjectId } from '../../../../lib/utils';
 import {
   downloadCustomerLedgerPdf,
   printCustomerLedger,
@@ -30,6 +30,7 @@ function toQueryDate(value: string, endOfDay = false): string | undefined {
 export default function CustomerDetailPage() {
   const params = useParams();
   const id = params?.id as string;
+  const validId = isObjectId(id);
   const { showToast } = useToast();
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -40,7 +41,7 @@ export default function CustomerDetailPage() {
   const { data: customerRes, isLoading } = useQuery({
     queryKey: ['customer', id],
     queryFn: () => customerService.findById(id),
-    enabled: !!id,
+    enabled: validId,
   });
 
   const { data: settingsRes } = useQuery({
@@ -57,7 +58,7 @@ export default function CustomerDetailPage() {
         from: queryFrom,
         to: queryTo,
       }),
-    enabled: !!id,
+    enabled: validId,
   });
 
   const { data: paymentsRes, isLoading: paymentsLoading } = useQuery({
@@ -69,12 +70,24 @@ export default function CustomerDetailPage() {
         from: queryFrom,
         to: queryTo,
       }),
-    enabled: !!id,
+    enabled: validId,
   });
 
   const customer = customerRes?.data;
-  const sales = salesRes?.data || [];
-  const payments = paymentsRes?.data || [];
+  const sales = useMemo(
+    () =>
+      [...(salesRes?.data || [])].sort(
+        (a, b) => new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime(),
+      ),
+    [salesRes],
+  );
+  const payments = useMemo(
+    () =>
+      [...(paymentsRes?.data || [])].sort(
+        (a, b) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime(),
+      ),
+    [paymentsRes],
+  );
   const business = toBusinessProfile(settingsRes?.data);
 
   const periodTotals = useMemo(
