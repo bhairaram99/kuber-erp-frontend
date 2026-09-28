@@ -161,12 +161,14 @@ export default function ProductDetailPage() {
               <span className="text-slate-500">Quality Tier</span>
               <span className="font-semibold text-slate-800 dark:text-slate-200">{product.quality}</span>
             </div>
-            <div className="py-2.5 flex justify-between">
-              <span className="text-slate-500">Physical Dimensions (TxWxL)</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">
-                {product.thickness} x {product.width} x {product.length} mm
-              </span>
-            </div>
+            {[product.thickness, product.width, product.length].some((value) => Number(value) > 0) && (
+              <div className="py-2.5 flex justify-between">
+                <span className="text-slate-500">Physical Dimensions (TxWxL)</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                  {product.thickness} x {product.width} x {product.length} mm ({product.unit})
+                </span>
+              </div>
+            )}
             <div className="py-2.5 flex justify-between">
               <span className="text-slate-500">Surface Finish</span>
               <span className="font-semibold text-slate-800 dark:text-slate-200">{product.finish}</span>

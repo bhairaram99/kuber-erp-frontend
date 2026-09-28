@@ -371,7 +371,13 @@ export function printCustomerLedger(options: {
   to?: string;
   business?: BusinessProfile;
 }) {
-  const { customer, sales, payments, from, to } = options;
+  const { customer, from, to } = options;
+  const sales = [...options.sales].sort(
+    (a, b) => new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime(),
+  );
+  const payments = [...options.payments].sort(
+    (a, b) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime(),
+  );
   const company = options.business || FALLBACK_BUSINESS;
   const invoiced = sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
   const received = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
@@ -488,7 +494,13 @@ export function downloadCustomerLedgerPdf(options: {
   to?: string;
   business?: BusinessProfile;
 }) {
-  const { customer, sales, payments, from, to } = options;
+  const { customer, from, to } = options;
+  const sales = [...options.sales].sort(
+    (a, b) => new Date(a.saleDate).getTime() - new Date(b.saleDate).getTime(),
+  );
+  const payments = [...options.payments].sort(
+    (a, b) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime(),
+  );
   const company = options.business || FALLBACK_BUSINESS;
   const invoiced = sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
   const received = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);

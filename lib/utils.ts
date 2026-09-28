@@ -19,6 +19,10 @@ export function formatNumber(num: number | undefined | null): string {
   return new Intl.NumberFormat('en-IN').format(num);
 }
 
+export function isObjectId(value: string | undefined | null): boolean {
+  return typeof value === 'string' && /^[a-f\d]{24}$/i.test(value);
+}
+
 export function formatDate(dateString: string | Date | undefined | null): string {
   if (!dateString) return '-';
   const d = new Date(dateString);

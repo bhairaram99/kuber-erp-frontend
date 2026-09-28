@@ -19,6 +19,7 @@ export default function EditProductPage() {
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState<any>(null);
+  const [useDimensions, setUseDimensions] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { data: productRes, isLoading } = useQuery({
@@ -61,6 +62,7 @@ export default function EditProductPage() {
         status: p.status,
         notes: p.notes || '',
       });
+      setUseDimensions([p.thickness, p.width, p.length].some((value) => Number(value) > 0));
     }
   }, [productRes]);
 
@@ -87,7 +89,16 @@ export default function EditProductPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    updateMutation.mutate(formData);
+    if (useDimensions && (!formData.thickness || !formData.width || !formData.length)) {
+      setError('Enter thickness, width, and length, or turn dimensions off.');
+      return;
+    }
+    updateMutation.mutate({
+      ...formData,
+      thickness: useDimensions ? Number(formData.thickness) : 0,
+      width: useDimensions ? Number(formData.width) : 0,
+      length: useDimensions ? Number(formData.length) : 0,
+    });
   };
 
   const handleChange = (field: string, val: any) => {
@@ -195,7 +206,69 @@ export default function EditProductPage() {
               3. Inventory Thresholds & Storage
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 px-3 py-2.5 dark:border-slate-800">
+              <div>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Dimensions</p>
+                <p className="text-[11px] text-slate-500">Turn on to record thickness, width, and length for this product.</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={useDimensions}
+                onClick={() => setUseDimensions((current) => !current)}
+                className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+                  useDimensions ? 'bg-red-600' : 'bg-slate-300 dark:bg-slate-700'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${
+                    useDimensions ? 'left-5' : 'left-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+            {useDimensions && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <Input
+                  label="Thickness (mm) *"
+                  type="number"
+                  min="0"
+                  required
+                  value={formData.thickness || ''}
+                  onChange={(e) => handleChange('thickness', Number(e.target.value))}
+                />
+                <Input
+                  label="Width (mm) *"
+                  type="number"
+                  min="0"
+                  required
+                  value={formData.width || ''}
+                  onChange={(e) => handleChange('width', Number(e.target.value))}
+                />
+                <Input
+                  label="Length (mm) *"
+                  type="number"
+                  min="0"
+                  required
+                  value={formData.length || ''}
+                  onChange={(e) => handleChange('length', Number(e.target.value))}
+                />
+                <Select
+                  label="Unit *"
+                  value={formData.unit}
+                  onChange={(e) => handleChange('unit', e.target.value)}
+                >
+                  <option value="cft">CFT</option>
+                  <option value="sqft">SQFT</option>
+                  <option value="piece">Piece</option>
+                  <option value="sheet">Sheet</option>
+                  <option value="bundle">Bundle</option>
+                  <option value="kg">KG</option>
+                </Select>
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <Input
               label="Minimum Stock"
               type="number"
@@ -215,6 +288,7 @@ export default function EditProductPage() {
               <option value="ACTIVE">ACTIVE</option>
               <option value="INACTIVE">INACTIVE</option>
             </Select>
+            </div>
           </CardContent>
         </Card>
 

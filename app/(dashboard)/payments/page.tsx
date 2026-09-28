@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CreditCard, Plus, Search, Check, AlertCircle, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { paymentService } from '../../../services/payment.service';
@@ -11,6 +11,7 @@ import { DataTable } from '../../../components/common/data-table';
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
 import { Input } from '../../../components/ui/input';
+import { DatePicker } from '../../../components/ui/date-picker';
 import { Card } from '../../../components/ui/card';
 import { formatCurrency, formatDate } from '../../../lib/utils';
 import { useAuth } from '../../../providers/auth-provider';
@@ -31,6 +32,8 @@ export default function PaymentsPage() {
   const [amount, setAmount] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState('BANK_TRANSFER');
   const [notes, setNotes] = useState('');
+  const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const paymentDateRef = useRef(paymentDate);
   const [formError, setFormError] = useState('');
 
   const { data, isLoading } = useQuery({
@@ -78,6 +81,9 @@ export default function PaymentsPage() {
     setAmount(0);
     setPaymentMethod('BANK_TRANSFER');
     setNotes('');
+    const today = new Date().toISOString().slice(0, 10);
+    paymentDateRef.current = today;
+    setPaymentDate(today);
     setFormError('');
   };
 
@@ -91,6 +97,10 @@ export default function PaymentsPage() {
       setFormError('Payment amount must be greater than 0.');
       return;
     }
+    if (!paymentDateRef.current) {
+      setFormError('Enter the payment date as dd/mm/yyyy.');
+      return;
+    }
 
     createMutation.mutate({
       type: paymentType,
@@ -98,6 +108,7 @@ export default function PaymentsPage() {
       supplierId: paymentType === 'SENT' ? partyId : undefined,
       amount: Number(amount),
       paymentMethod,
+      paymentDate: `${paymentDateRef.current}T12:00:00`,
       notes,
     });
   };
@@ -241,7 +252,7 @@ export default function PaymentsPage() {
 
       {/* Record Payment Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
           <div className="bg-white dark:bg-slate-900 max-w-md w-full rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl p-6 space-y-4 animate-in fade-in zoom-in-95">
             <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
               Record Financial Payment
@@ -335,6 +346,20 @@ export default function PaymentsPage() {
                   required
                   placeholder="0.00"
                   className="text-sm font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 block">
+                  Payment Date <span className="text-rose-500">*</span>
+                </label>
+                <DatePicker
+                  value={paymentDate}
+                  required
+                  onChange={(isoDate) => {
+                    paymentDateRef.current = isoDate;
+                    setPaymentDate(isoDate);
+                  }}
                 />
               </div>
 

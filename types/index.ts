@@ -303,6 +303,7 @@ export interface AuditLog {
 export interface DashboardSummary {
   kpi: {
     totalSales: number;
+    costOfGoodsSold?: number;
     grossProfit: number;
     netProfit: number;
     totalExpenses: number;
