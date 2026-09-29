@@ -66,6 +66,9 @@ function printHtmlDocument(title: string, bodyHtml: string) {
     #kuber-print-root .doc-title { color: #e11f2b; font-size: 18px; font-weight: 800; text-align: right; }
     #kuber-print-root .header-left { flex: 1; min-width: 0; }
     #kuber-print-root .header-right { flex: 0 0 210px; max-width: 220px; text-align: right; }
+    #kuber-print-root .header-center { justify-content: center; }
+    #kuber-print-root .header-center .header-right { flex: none; max-width: none; text-align: center; }
+    #kuber-print-root .header-center .doc-title { text-align: center; }
     #kuber-print-root table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
     #kuber-print-root th, #kuber-print-root td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; vertical-align: top; }
     #kuber-print-root th { background: #f8fafc; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -221,44 +224,32 @@ function drawSummaryTable(doc: jsPDF, startY: number, rows: Array<[string, strin
   });
 }
 
-export function printSaleInvoice(sale: Sale, business?: BusinessProfile) {
-  const company = business || FALLBACK_BUSINESS;
+function invoiceFileName(sale: Sale): string {
+  const customer = sale.customerId as Customer | undefined;
+  const party = (customer?.company || customer?.name || 'Invoice').trim();
+  const safe = party.replace(/[<>:"/\\|?*]+/g, '').replace(/\s+/g, ' ').trim() || 'Invoice';
+  return `${safe} ${sale.invoiceNumber}`;
+}
+
+function billedPartyLines(customer?: Customer | null): string[] {
+  const company = customer?.company?.trim() || '';
+  const name = customer?.name?.trim() || 'Walk-in Customer';
+  return [
+    ...(company ? [company] : []),
+    name,
+    customer?.phone ? `Phone: ${customer.phone}` : '',
+    customer?.address || '',
+    customer?.taxNumber ? `GST: ${customer.taxNumber}` : '',
+  ].filter(Boolean);
+}
+
+export function printSaleInvoice(sale: Sale, _business?: BusinessProfile, detailed = false) {
   const customer = sale.customerId as Customer;
-  const body = `
-    <div class="header">
-      ${companyBlock(company)}
-      <div class="header-right">
-        <p class="doc-title">TAX INVOICE</p>
-        <p><strong>${escapeHtml(sale.invoiceNumber)}</strong></p>
-        <p class="muted">Date: ${formatDate(sale.saleDate)}</p>
-        <p class="muted">${sale.paymentStatus} / ${sale.status}</p>
-      </div>
-    </div>
-    <div class="section">
-      <h3>Billed To</h3>
-      <p><strong>${escapeHtml(customer?.name || 'Walk-in Customer')}</strong></p>
-      ${customer?.company ? `<p class="muted">${escapeHtml(customer.company)}</p>` : ''}
-      ${customer?.phone ? `<p class="muted">Phone: ${escapeHtml(customer.phone)}</p>` : ''}
-      ${customer?.address ? `<p class="muted">${escapeHtml(customer.address)}</p>` : ''}
-      ${customer?.taxNumber ? `<p class="muted">GST: ${escapeHtml(customer.taxNumber)}</p>` : ''}
-    </div>
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Product</th>
-          <th>SKU</th>
-          <th class="right">Qty</th>
-          <th class="right">Unit Price</th>
-          <th class="right">Disc</th>
-          <th class="right">Tax</th>
-          <th class="right">Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${(sale.items || [])
-          .map(
-            (item, index) => `
+  const party = billedPartyLines(customer);
+  const rows = (sale.items || [])
+    .map((item, index) =>
+      detailed
+        ? `
           <tr>
             <td>${index + 1}</td>
             <td>${escapeHtml(item.productNameSnapshot || '')}</td>
@@ -268,12 +259,50 @@ export function printSaleInvoice(sale: Sale, business?: BusinessProfile) {
             <td class="right">${item.discount ? rupees(item.discount) : '-'}</td>
             <td class="right">${item.tax ? rupees(item.tax) : '-'}</td>
             <td class="right">${rupees(item.total)}</td>
+          </tr>`
+        : `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${escapeHtml(item.productNameSnapshot || '')}</td>
+            <td>${escapeHtml(item.skuSnapshot || '-')}</td>
+            <td class="right">${item.quantity} ${escapeHtml(item.unitSnapshot || '')}</td>
           </tr>`,
-          )
-          .join('')}
-      </tbody>
+    )
+    .join('');
+  const body = `
+    <div class="header header-center">
+      <div class="header-right">
+        <p class="doc-title">TAX INVOICE</p>
+        <p><strong>${escapeHtml(sale.invoiceNumber)}</strong></p>
+        <p class="muted">Date: ${formatDate(sale.saleDate)}</p>
+        <p class="muted">${sale.paymentStatus} / ${sale.status}</p>
+      </div>
+    </div>
+    <div class="section">
+      <h3>Billed To</h3>
+      ${party
+        .map((line, index) =>
+          index === 0
+            ? `<p><strong>${escapeHtml(line)}</strong></p>`
+            : `<p class="muted">${escapeHtml(line)}</p>`,
+        )
+        .join('')}
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Product</th>
+          <th>Details</th>
+          <th class="right">Qty / Unit</th>
+          ${detailed ? '<th class="right">Unit Price</th><th class="right">Disc</th><th class="right">Tax</th><th class="right">Total</th>' : ''}
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
     </table>
-    <table class="summary summary-box">
+    ${
+      detailed
+        ? `<table class="summary summary-box">
       <tbody>
         <tr><td>Subtotal</td><td class="right">${rupees(sale.subtotal)}</td></tr>
         ${sale.discount ? `<tr><td>Discount</td><td class="right">- ${rupees(sale.discount)}</td></tr>` : ''}
@@ -282,85 +311,126 @@ export function printSaleInvoice(sale: Sale, business?: BusinessProfile) {
         <tr><td class="paid">Paid</td><td class="right paid">${rupees(sale.paidAmount)}</td></tr>
         <tr><td class="${sale.dueAmount > 0 ? 'due' : 'paid'}">Balance Due</td><td class="right ${sale.dueAmount > 0 ? 'due' : 'paid'}">${rupees(sale.dueAmount)}</td></tr>
       </tbody>
-    </table>
+    </table>`
+        : ''
+    }
   `;
-  printHtmlDocument(sale.invoiceNumber, body);
+  printHtmlDocument(invoiceFileName(sale), body);
 }
 
-export function downloadSaleInvoicePdf(sale: Sale, business?: BusinessProfile) {
-  const company = business || FALLBACK_BUSINESS;
+function applyCenteredInvoiceHeader(doc: jsPDF, sale: Sale): number {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const center = pageWidth / 2;
+
+  doc.setTextColor(225, 31, 43);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('TAX INVOICE', center, 18, { align: 'center' });
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(11);
+  doc.text(sale.invoiceNumber, center, 25, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(80);
+  doc.text(`Date: ${formatDate(sale.saleDate)}`, center, 31, { align: 'center' });
+  doc.text(`${sale.paymentStatus} / ${sale.status}`, center, 36, { align: 'center' });
+
+  const lineY = 42;
+  doc.setDrawColor(225, 31, 43);
+  doc.setLineWidth(0.6);
+  doc.line(14, lineY, pageWidth - 14, lineY);
+  doc.setTextColor(15, 23, 42);
+  return lineY + 8;
+}
+
+export function downloadSaleInvoicePdf(sale: Sale, _business?: BusinessProfile, detailed = false) {
   const customer = sale.customerId as Customer;
   const doc = new jsPDF();
-  const contentStart = applyPdfHeader(
-    doc,
-    company,
-    'TAX INVOICE',
-    `${sale.invoiceNumber} | ${formatDate(sale.saleDate)}`,
-  );
+  const contentStart = applyCenteredInvoiceHeader(doc, sale);
+  const party = billedPartyLines(customer);
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.text('Billed To', 14, contentStart);
-  doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  const billed = [
-    customer?.name || 'Walk-in Customer',
-    customer?.company,
-    customer?.phone ? `Phone: ${customer.phone}` : '',
-    customer?.address,
-    customer?.taxNumber ? `GST: ${customer.taxNumber}` : '',
-  ].filter(Boolean) as string[];
-  const billedLines = doc.splitTextToSize(billed.join('\n'), 110);
-  doc.text(billedLines, 14, contentStart + 6);
+  party.forEach((line, index) => {
+    doc.setFont('helvetica', index === 0 ? 'bold' : 'normal');
+    const wrapped = doc.splitTextToSize(line, 110);
+    doc.text(wrapped, 14, contentStart + 6 + index * 5);
+  });
 
   const paymentLines = doc.splitTextToSize(
     [`Payment: ${sale.paymentMethod || '-'}`, `Status: ${sale.paymentStatus} / ${sale.status}`].join('\n'),
     60,
   );
+  doc.setFont('helvetica', 'normal');
   doc.text(paymentLines, doc.internal.pageSize.getWidth() - 14, contentStart, { align: 'right' });
 
-  const tableStart = contentStart + Math.max(billedLines.length, 3) * 5 + 10;
+  const tableStart = contentStart + party.length * 5 + 12;
+  const pageWidth = doc.internal.pageSize.getWidth();
 
   autoTable(doc, {
     startY: tableStart,
-    head: [['#', 'Product', 'SKU', 'Qty', 'Unit Price', 'Disc', 'Tax', 'Total']],
-    body: (sale.items || []).map((item, index) => [
-      index + 1,
-      item.productNameSnapshot,
-      item.skuSnapshot || '-',
-      `${item.quantity} ${item.unitSnapshot || ''}`.trim(),
-      rupees(item.sellingPrice),
-      item.discount ? rupees(item.discount) : '-',
-      item.tax ? rupees(item.tax) : '-',
-      rupees(item.total),
-    ]),
+    head: [
+      detailed
+        ? ['#', 'Product', 'Details', 'Qty / Unit', 'Unit Price', 'Disc', 'Tax', 'Total']
+        : ['#', 'Product', 'Details', 'Qty / Unit'],
+    ],
+    body: (sale.items || []).map((item, index) => {
+      const base = [
+        index + 1,
+        item.productNameSnapshot,
+        item.skuSnapshot || '-',
+        `${item.quantity} ${item.unitSnapshot || ''}`.trim(),
+      ];
+      return detailed
+        ? [
+            ...base,
+            rupees(item.sellingPrice),
+            item.discount ? rupees(item.discount) : '-',
+            item.tax ? rupees(item.tax) : '-',
+            rupees(item.total),
+          ]
+        : base;
+    }),
     styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak', valign: 'middle' },
     headStyles: { fillColor: [225, 31, 43], textColor: 255, halign: 'center' },
-    columnStyles: {
-      0: { cellWidth: 10, halign: 'center' },
-      1: { cellWidth: 48 },
-      2: { cellWidth: 24 },
-      3: { cellWidth: 18, halign: 'right' },
-      4: { cellWidth: 24, halign: 'right' },
-      5: { cellWidth: 18, halign: 'right' },
-      6: { cellWidth: 18, halign: 'right' },
-      7: { cellWidth: 22, halign: 'right' },
-    },
+    columnStyles: detailed
+      ? {
+          0: { cellWidth: 10, halign: 'center' },
+          1: { cellWidth: 48 },
+          2: { cellWidth: 24 },
+          3: { cellWidth: 22, halign: 'right' },
+          4: { cellWidth: 24, halign: 'right' },
+          5: { cellWidth: 16, halign: 'right' },
+          6: { cellWidth: 16, halign: 'right' },
+          7: { cellWidth: 22, halign: 'right' },
+        }
+      : {
+          0: { cellWidth: 14, halign: 'center' },
+          1: { cellWidth: 90 },
+          2: { cellWidth: 40 },
+          3: { cellWidth: 38, halign: 'right' },
+        },
     margin: { left: 14, right: 14 },
-    tableWidth: doc.internal.pageSize.getWidth() - 28,
+    tableWidth: pageWidth - 28,
   });
 
-  const endY = (doc as any).lastAutoTable?.finalY || tableStart + 20;
-  drawTotalsBox(doc, endY + 8, [
-    ['Subtotal', rupees(sale.subtotal)],
-    ...(sale.discount ? [['Discount', `- ${rupees(sale.discount)}`] as [string, string]] : []),
-    ['GST Tax', `+ ${rupees(sale.tax)}`],
-    ['Grand Total', rupees(sale.total)],
-    ['Paid', rupees(sale.paidAmount)],
-    ['Balance Due', rupees(sale.dueAmount)],
-  ]);
+  if (detailed) {
+    const endY = (doc as any).lastAutoTable?.finalY || tableStart + 20;
+    drawTotalsBox(doc, endY + 8, [
+      ['Subtotal', rupees(sale.subtotal)],
+      ...(sale.discount ? [['Discount', `- ${rupees(sale.discount)}`] as [string, string]] : []),
+      ['GST Tax', `+ ${rupees(sale.tax)}`],
+      ['Grand Total', rupees(sale.total)],
+      ['Paid', rupees(sale.paidAmount)],
+      ['Balance Due', rupees(sale.dueAmount)],
+    ]);
+  }
 
-  doc.save(`${sale.invoiceNumber}.pdf`);
+  doc.save(`${invoiceFileName(sale)}.pdf`);
 }
 
 export function printCustomerLedger(options: {
@@ -378,23 +448,21 @@ export function printCustomerLedger(options: {
   const payments = [...options.payments].sort(
     (a, b) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime(),
   );
-  const company = options.business || FALLBACK_BUSINESS;
   const invoiced = sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
   const received = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+  const companyName = customer.company?.trim();
 
   const body = `
-    <div class="header">
-      ${companyBlock(company)}
+    <div class="header header-center">
       <div class="header-right">
         <p class="doc-title">CUSTOMER LEDGER</p>
         <p class="muted">Period: ${periodLabel(from, to)}</p>
-        <p class="muted">Generated: ${formatDate(new Date())}</p>
       </div>
     </div>
     <div class="section">
-      <h3>Customer Details</h3>
-      <p><strong>${escapeHtml(customer.name)}</strong> ${customer.company ? `• ${escapeHtml(customer.company)}` : ''}</p>
-      <p class="muted">Code: ${escapeHtml(customer.customerCode || '-')} | Type: ${escapeHtml(customer.customerType || '-')}</p>
+      ${companyName ? `<p><strong>${escapeHtml(companyName)}</strong></p>` : ''}
+      <p>${companyName ? escapeHtml(customer.name) : `<strong>${escapeHtml(customer.name)}</strong>`}</p>
+      <p class="muted">Code: ${escapeHtml(customer.customerCode || '-')}</p>
       <p class="muted">Phone: ${escapeHtml(customer.phone || '-')} | Email: ${escapeHtml(customer.email || '-')}</p>
       <p class="muted">${escapeHtml([customer.address, customer.city, customer.state].filter(Boolean).join(', ') || '-')}</p>
     </div>
@@ -476,14 +544,14 @@ export function printCustomerLedger(options: {
       </thead>
       <tbody>
         <tr>
-          <td class="right">${rupees(invoiced)}</td>
-          <td class="right paid">${rupees(received)}</td>
-          <td class="right due">${rupees(customer.totalDue)}</td>
+          <td class="paid">${rupees(invoiced)}</td>
+          <td class="paid">${rupees(received)}</td>
+          <td class="due">${rupees(customer.totalDue)}</td>
         </tr>
       </tbody>
     </table>
   `;
-  printHtmlDocument(`${customer.customerCode || customer.name}-ledger`, body);
+  printHtmlDocument(ledgerFileName(customer), body);
 }
 
 export function downloadCustomerLedgerPdf(options: {
@@ -501,23 +569,38 @@ export function downloadCustomerLedgerPdf(options: {
   const payments = [...options.payments].sort(
     (a, b) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime(),
   );
-  const company = options.business || FALLBACK_BUSINESS;
   const invoiced = sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
   const received = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
   const doc = new jsPDF();
-  const contentStart = applyPdfHeader(doc, company, 'CUSTOMER LEDGER', `Period: ${periodLabel(from, to)}`);
+  const companyName = customer.company?.trim();
 
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.text(customer.name, 14, contentStart);
+  let customerY = applyCenteredLedgerHeader(doc, periodLabel(from, to));
+  if (companyName) {
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    const companyLines = doc.splitTextToSize(companyName, doc.internal.pageSize.getWidth() - 28);
+    doc.text(companyLines, 14, customerY);
+    customerY += companyLines.length * 5.2;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(customer.name, 14, customerY);
+    customerY += 5;
+  } else {
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(customer.name, 14, customerY);
+    customerY += 5.5;
+  }
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
   const customerLines = [
-    `${customer.company || 'Direct Client'}  |  Code: ${customer.customerCode || '-'}  |  Type: ${customer.customerType || '-'}`,
+    `Code: ${customer.customerCode || '-'}`,
     `Phone: ${customer.phone || '-'}  |  Email: ${customer.email || '-'}`,
     [customer.address, customer.city, customer.state].filter(Boolean).join(', ') || '-',
   ].map((line) => doc.splitTextToSize(line, doc.internal.pageSize.getWidth() - 28));
-  let customerY = contentStart + 6;
   customerLines.forEach((wrapped) => {
     doc.text(wrapped, 14, customerY);
     customerY += wrapped.length * 4.4;
@@ -584,12 +667,45 @@ export function downloadCustomerLedgerPdf(options: {
   });
 
   const afterPayments = (doc as any).lastAutoTable?.finalY || afterInvoices + 40;
-  drawSummaryTable(doc, afterPayments + 10, [
-    ['Invoices in period', rupees(invoiced)],
-    ['Receipts in period', rupees(received)],
-    ['Account outstanding', rupees(customer.totalDue)],
-  ]);
+  const green: [number, number, number] = [5, 150, 105];
+  const red: [number, number, number] = [225, 31, 43];
+  autoTable(doc, {
+    startY: afterPayments + 10,
+    head: [['Invoices in period', 'Receipts in period', 'Account outstanding']],
+    body: [[
+      { content: rupees(invoiced), styles: { textColor: green, fontStyle: 'bold', halign: 'center' } },
+      { content: rupees(received), styles: { textColor: green, fontStyle: 'bold', halign: 'center' } },
+      { content: rupees(customer.totalDue), styles: { textColor: red, fontStyle: 'bold', halign: 'center' } },
+    ]],
+    theme: 'grid',
+    styles: { fontSize: 9, cellPadding: 4, halign: 'center', overflow: 'linebreak', valign: 'middle' },
+    headStyles: { fillColor: [248, 250, 252], textColor: [51, 65, 85], fontStyle: 'bold' },
+    margin: { left: 14, right: 14 },
+    tableWidth: doc.internal.pageSize.getWidth() - 28,
+  });
 
-  const safeName = (customer.customerCode || customer.name || 'customer').replace(/[^\w-]+/g, '_');
-  doc.save(`${safeName}-ledger.pdf`);
+  doc.save(`${ledgerFileName(customer)}.pdf`);
+}
+
+function ledgerFileName(customer: Customer): string {
+  const party = (customer.company || customer.name || 'Customer').trim();
+  return party.replace(/[<>:"/\\|?*]+/g, '').replace(/\s+/g, ' ').trim() || 'Customer';
+}
+
+function applyCenteredLedgerHeader(doc: jsPDF, period: string): number {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const center = pageWidth / 2;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(225, 31, 43);
+  doc.text('CUSTOMER LEDGER', center, 18, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Period: ${period}`, center, 25, { align: 'center' });
+  doc.setDrawColor(225, 31, 43);
+  doc.setLineWidth(0.6);
+  doc.line(14, 30, pageWidth - 14, 30);
+  doc.setTextColor(15, 23, 42);
+  return 40;
 }

@@ -18,9 +18,15 @@ interface PurchaseLineItem {
   productId: string;
   product?: Product;
   quantity: number | '';
-  purchasePrice: number;
-  discount: number;
-  taxPercentage: number;
+  purchasePrice: number | '';
+  discount: number | '';
+  taxPercentage: number | '';
+}
+
+function optionalNumber(raw: string): number | '' {
+  if (raw.trim() === '') return '';
+  const value = Number(raw);
+  return Number.isNaN(value) ? '' : Math.max(0, value);
 }
 
 export default function NewPurchasePage() {
@@ -30,13 +36,13 @@ export default function NewPurchasePage() {
     {
       productId: '',
       quantity: 1,
-      purchasePrice: 0,
-      discount: 0,
-      taxPercentage: 0,
+      purchasePrice: '',
+      discount: '',
+      taxPercentage: '',
     },
   ]);
-  const [discount, setDiscount] = useState<number>(0);
-  const [paidAmount, setPaidAmount] = useState<number>(0);
+  const [discount, setDiscount] = useState<number | ''>('');
+  const [paidAmount, setPaidAmount] = useState<number | ''>('');
   const [paymentMethod, setPaymentMethod] = useState<string>('BANK_TRANSFER');
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,8 +70,8 @@ export default function NewPurchasePage() {
       ...newItems[index],
       productId: prodId,
       product: prod,
-      purchasePrice: prod?.purchasePrice || 0,
-      taxPercentage: 0,
+      purchasePrice: prod?.purchasePrice ? prod.purchasePrice : '',
+      taxPercentage: '',
     };
     setItems(newItems);
   };
@@ -81,15 +87,16 @@ export default function NewPurchasePage() {
     setItems(newItems);
   };
 
-  const handleTaxChange = (index: number, tax: number) => {
+  const handleTaxChange = (index: number, raw: string) => {
     const newItems = [...items];
-    newItems[index].taxPercentage = Math.max(0, tax);
+    const tax = optionalNumber(raw);
+    newItems[index].taxPercentage = tax === '' ? '' : Math.min(100, tax);
     setItems(newItems);
   };
 
-  const handlePriceChange = (index: number, price: number) => {
+  const handlePriceChange = (index: number, raw: string) => {
     const newItems = [...items];
-    newItems[index].purchasePrice = Math.max(0, price);
+    newItems[index].purchasePrice = optionalNumber(raw);
     setItems(newItems);
   };
 
@@ -99,9 +106,9 @@ export default function NewPurchasePage() {
       {
         productId: '',
         quantity: 1,
-        purchasePrice: 0,
-        discount: 0,
-        taxPercentage: 0,
+        purchasePrice: '',
+        discount: '',
+        taxPercentage: '',
       },
     ]);
   };
@@ -115,15 +122,15 @@ export default function NewPurchasePage() {
   // Calculations
   const lineSubtotals = items.map((item) => {
     const quantity = Number(item.quantity) || 0;
-    const gross = quantity * item.purchasePrice;
-    const tax = (gross * (item.taxPercentage || 0)) / 100;
+    const gross = quantity * (Number(item.purchasePrice) || 0);
+    const tax = (gross * (Number(item.taxPercentage) || 0)) / 100;
     return { gross, tax, total: gross + tax };
   });
 
   const subtotal = lineSubtotals.reduce((acc, curr) => acc + curr.gross, 0);
   const totalTax = lineSubtotals.reduce((acc, curr) => acc + curr.tax, 0);
-  const grandTotal = Math.max(0, subtotal + totalTax - discount);
-  const dueAmount = Math.max(0, grandTotal - paidAmount);
+  const grandTotal = Math.max(0, subtotal + totalTax - (Number(discount) || 0));
+  const dueAmount = Math.max(0, grandTotal - (Number(paidAmount) || 0));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -314,9 +321,8 @@ export default function NewPurchasePage() {
                           min="0"
                           step="any"
                           value={item.purchasePrice}
-                          onChange={(e) =>
-                            handlePriceChange(idx, Number(e.target.value))
-                          }
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => handlePriceChange(idx, e.target.value)}
                           className="h-8 text-xs w-28"
                         />
                       </td>
@@ -327,7 +333,8 @@ export default function NewPurchasePage() {
                           max="100"
                           step="any"
                           value={item.taxPercentage}
-                          onChange={(e) => handleTaxChange(idx, Number(e.target.value))}
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => handleTaxChange(idx, e.target.value)}
                           className="h-8 text-xs w-16"
                           aria-label="Tax percent"
                         />
@@ -387,7 +394,8 @@ export default function NewPurchasePage() {
                   type="number"
                   min="0"
                   value={discount}
-                  onChange={(e) => setDiscount(Number(e.target.value))}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setDiscount(optionalNumber(e.target.value))}
                   className="h-8 text-xs w-32 text-right"
                 />
               </div>
@@ -408,7 +416,8 @@ export default function NewPurchasePage() {
                   min="0"
                   max={grandTotal}
                   value={paidAmount}
-                  onChange={(e) => setPaidAmount(Number(e.target.value))}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setPaidAmount(optionalNumber(e.target.value))}
                   className="h-8 text-xs w-32 text-right font-bold text-emerald-600"
                 />
               </div>

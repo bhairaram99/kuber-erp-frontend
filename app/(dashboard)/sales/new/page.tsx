@@ -19,8 +19,14 @@ interface LineItem {
   product?: Product;
   quantity: number | '';
   sellingPrice: number | '';
-  discount: number;
-  taxPercentage: number;
+  discount: number | '';
+  taxPercentage: number | '';
+}
+
+function optionalNumber(raw: string): number | '' {
+  if (raw.trim() === '') return '';
+  const value = Number(raw);
+  return Number.isNaN(value) ? '' : Math.max(0, value);
 }
 
 export default function NewSalePage() {
@@ -30,13 +36,13 @@ export default function NewSalePage() {
     {
       productId: '',
       quantity: 1,
-      sellingPrice: 0,
-      discount: 0,
-      taxPercentage: 0,
+      sellingPrice: '',
+      discount: '',
+      taxPercentage: '',
     },
   ]);
-  const [discount, setDiscount] = useState<number>(0);
-  const [paidAmount, setPaidAmount] = useState<number>(0);
+  const [discount, setDiscount] = useState<number | ''>('');
+  const [paidAmount, setPaidAmount] = useState<number | ''>('');
   const [paymentMethod, setPaymentMethod] = useState<string>('CASH');
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,8 +70,8 @@ export default function NewSalePage() {
       ...newItems[index],
       productId: prodId,
       product: prod,
-      sellingPrice: prod?.sellingPrice || 0,
-      taxPercentage: 0,
+      sellingPrice: prod?.sellingPrice ? prod.sellingPrice : '',
+      taxPercentage: '',
     };
     setItems(newItems);
   };
@@ -92,15 +98,17 @@ export default function NewSalePage() {
     setItems(newItems);
   };
 
-  const handleTaxChange = (index: number, tax: number) => {
+  const handleTaxChange = (index: number, raw: string) => {
     const newItems = [...items];
-    newItems[index].taxPercentage = Math.max(0, tax);
+    const tax = optionalNumber(raw);
+    newItems[index].taxPercentage = tax === '' ? '' : Math.min(100, tax);
     setItems(newItems);
   };
 
-  const handleLineDiscountChange = (index: number, disc: number) => {
+  const handleLineDiscountChange = (index: number, raw: string) => {
     const newItems = [...items];
-    newItems[index].discount = Math.max(0, disc);
+    const disc = optionalNumber(raw);
+    newItems[index].discount = disc === '' ? '' : Math.min(100, disc);
     setItems(newItems);
   };
 
@@ -110,9 +118,9 @@ export default function NewSalePage() {
       {
         productId: '',
         quantity: 1,
-        sellingPrice: 0,
-        discount: 0,
-        taxPercentage: 0,
+        sellingPrice: '',
+        discount: '',
+        taxPercentage: '',
       },
     ]);
   };
@@ -127,8 +135,8 @@ export default function NewSalePage() {
   const lineSubtotals = items.map((item) => {
     const quantity = Number(item.quantity) || 0;
     const gross = quantity * (Number(item.sellingPrice) || 0);
-    const discounted = gross - (gross * (item.discount || 0)) / 100;
-    const tax = (discounted * (item.taxPercentage || 0)) / 100;
+    const discounted = gross - (gross * (Number(item.discount) || 0)) / 100;
+    const tax = (discounted * (Number(item.taxPercentage) || 0)) / 100;
     return { gross, discounted, tax, total: discounted + tax };
   });
 
@@ -139,8 +147,8 @@ export default function NewSalePage() {
     0,
   );
   const totalBeforeOverallDiscount = subtotal - totalLineDiscount + totalTax;
-  const grandTotal = Math.max(0, totalBeforeOverallDiscount - discount);
-  const dueAmount = Math.max(0, grandTotal - paidAmount);
+  const grandTotal = Math.max(0, totalBeforeOverallDiscount - (Number(discount) || 0));
+  const dueAmount = Math.max(0, grandTotal - (Number(paidAmount) || 0));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -315,7 +323,7 @@ export default function NewSalePage() {
                           <option value="">-- Choose Product --</option>
                           {products.map((p) => (
                             <option key={p._id} value={p._id}>
-                              {p.name} ({p.woodType} / {p.grade}) — Stock: {p.currentStock} {p.unit}
+                              {p.name} — {p.sku} — Stock: {p.currentStock} {p.unit}
                             </option>
                           ))}
                         </select>
@@ -365,9 +373,8 @@ export default function NewSalePage() {
                           min="0"
                           max="100"
                           value={item.discount}
-                          onChange={(e) =>
-                            handleLineDiscountChange(idx, Number(e.target.value))
-                          }
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => handleLineDiscountChange(idx, e.target.value)}
                           className="h-8 text-xs w-16"
                         />
                       </td>
@@ -378,7 +385,8 @@ export default function NewSalePage() {
                           max="100"
                           step="any"
                           value={item.taxPercentage}
-                          onChange={(e) => handleTaxChange(idx, Number(e.target.value))}
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => handleTaxChange(idx, e.target.value)}
                           className="h-8 text-xs w-16"
                           aria-label="Tax percent"
                         />
@@ -440,7 +448,8 @@ export default function NewSalePage() {
                   type="number"
                   min="0"
                   value={discount}
-                  onChange={(e) => setDiscount(Number(e.target.value))}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setDiscount(optionalNumber(e.target.value))}
                   className="h-8 text-xs w-32 text-right"
                 />
               </div>
@@ -461,7 +470,8 @@ export default function NewSalePage() {
                   min="0"
                   max={grandTotal}
                   value={paidAmount}
-                  onChange={(e) => setPaidAmount(Number(e.target.value))}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => setPaidAmount(optionalNumber(e.target.value))}
                   className="h-8 text-xs w-32 text-right font-bold text-emerald-600"
                 />
               </div>
