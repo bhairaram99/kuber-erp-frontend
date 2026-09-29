@@ -58,6 +58,37 @@ const navSections: { title: string; icon?: LucideIcon; collapsible?: boolean; it
         permission: PERMISSIONS.DASHBOARD_VIEW,
       },
       {
+        title: 'Commerce & CRM',
+        icon: Store,
+        permission: PERMISSIONS.SALES_VIEW,
+        children: [
+          {
+            title: 'Sales & Invoices',
+            href: '/sales',
+            icon: ShoppingCart,
+            permission: PERMISSIONS.SALES_VIEW,
+          },
+          {
+            title: 'Purchases / PO',
+            href: '/purchases',
+            icon: ShoppingBag,
+            permission: PERMISSIONS.PURCHASES_VIEW,
+          },
+          {
+            title: 'Customer Ledger',
+            href: '/customers',
+            icon: Users,
+            permission: PERMISSIONS.CUSTOMERS_VIEW,
+          },
+          {
+            title: 'Suppliers',
+            href: '/suppliers',
+            icon: Truck,
+            permission: PERMISSIONS.SUPPLIERS_VIEW,
+          },
+        ],
+      },
+      {
         title: 'Categories',
         href: '/categories',
         icon: Layers,
@@ -87,37 +118,6 @@ const navSections: { title: string; icon?: LucideIcon; collapsible?: boolean; it
             permission: PERMISSIONS.INVENTORY_VIEW,
           },
         ],
-      },
-    ],
-  },
-  {
-    title: 'Commerce & CRM',
-    icon: Store,
-    collapsible: true,
-    items: [
-      {
-        title: 'Sales & Invoices',
-        href: '/sales',
-        icon: ShoppingCart,
-        permission: PERMISSIONS.SALES_VIEW,
-      },
-      {
-        title: 'Purchases / PO',
-        href: '/purchases',
-        icon: ShoppingBag,
-        permission: PERMISSIONS.PURCHASES_VIEW,
-      },
-      {
-        title: 'Customer Ledger',
-        href: '/customers',
-        icon: Users,
-        permission: PERMISSIONS.CUSTOMERS_VIEW,
-      },
-      {
-        title: 'Suppliers',
-        href: '/suppliers',
-        icon: Truck,
-        permission: PERMISSIONS.SUPPLIERS_VIEW,
       },
     ],
   },
@@ -232,7 +232,11 @@ export function Sidebar({
 
       <nav className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin">
         {navSections.map((section, secIdx) => {
-          const visibleItems = section.items.filter((item) => hasPermission(item.permission));
+          const visibleItems = section.items.filter(
+            (item) =>
+              hasPermission(item.permission) ||
+              (item.children || []).some((child) => hasPermission(child.permission)),
+          );
           if (visibleItems.length === 0) return null;
           const sectionActive = sectionIsActive(pathname, visibleItems);
           const expanded = section.collapsible ? (openMenus[section.title] ?? sectionActive) : true;

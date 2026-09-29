@@ -32,6 +32,7 @@ export default function SaleDetailPage() {
   const { showToast } = useToast();
   const saleId = params.id as string;
   const [cancelError, setCancelError] = useState('');
+  const [showPrices, setShowPrices] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['sale', saleId],
@@ -95,12 +96,30 @@ export default function SaleDetailPage() {
             >
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showPrices}
+              onClick={() => setShowPrices((current) => !current)}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700"
+            >
+              <span
+                className={`relative h-5 w-9 rounded-full transition ${showPrices ? 'bg-red-600' : 'bg-slate-300'}`}
+              >
+                <span
+                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition ${
+                    showPrices ? 'left-4' : 'left-0.5'
+                  }`}
+                />
+              </span>
+              Full details
+            </button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
                 try {
-                  printSaleInvoice(sale, business);
+                  printSaleInvoice(sale, business, showPrices);
                   showToast('Print preview is ready. Choose a printer or Save as PDF.', 'success');
                 } catch (error: any) {
                   showToast(error?.message || 'Unable to print this invoice right now.', 'error');
@@ -115,7 +134,7 @@ export default function SaleDetailPage() {
               size="sm"
               onClick={() => {
                 try {
-                  downloadSaleInvoicePdf(sale, business);
+                  downloadSaleInvoicePdf(sale, business, showPrices);
                   showToast('Invoice PDF downloaded successfully.', 'success');
                 } catch (error: any) {
                   showToast(error?.message || 'Unable to download the PDF right now.', 'error');
@@ -159,33 +178,17 @@ export default function SaleDetailPage() {
       {/* Invoice Card */}
       <Card className="p-8 space-y-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md">
         {/* Header section */}
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-white p-1 flex items-center justify-center shrink-0 border border-slate-200 shadow-xs">
-                <img src="/logo.png" alt="Kuber Plywood" className="h-full w-full object-contain" />
-              </div>
-              <h2 className="text-xl font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">
-                Kuber Plywood Mart
-              </h2>
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              Industrial Area, Timber Market Yard, Hubli, Karnataka
-            </p>
-            <p className="text-xs text-slate-500">GSTIN: 29AAAAA0000A1Z5</p>
-          </div>
-
-          <div className="text-right sm:text-right">
-            <h3 className="text-lg font-bold text-red-600 dark:text-red-500">
-              TAX INVOICE
-            </h3>
-            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              {sale.invoiceNumber}
-            </p>
-            <p className="text-xs text-slate-500">
-              Date: {formatDate(sale.saleDate)}
-            </p>
-            <div className="flex gap-1.5 justify-end mt-2">
+        <div className="flex flex-col items-center text-center gap-1 border-b border-slate-200 dark:border-slate-800 pb-6">
+          <h3 className="text-lg font-bold text-red-600 dark:text-red-500">
+            TAX INVOICE
+          </h3>
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+            {sale.invoiceNumber}
+          </p>
+          <p className="text-xs text-slate-500">
+            Date: {formatDate(sale.saleDate)}
+          </p>
+          <div className="flex gap-1.5 justify-center mt-2">
               <Badge
                 variant={
                   sale.paymentStatus === 'PAID'
@@ -205,7 +208,6 @@ export default function SaleDetailPage() {
                 {sale.status}
               </Badge>
             </div>
-          </div>
         </div>
 
         {/* Customer & Payment Information */}
@@ -214,12 +216,18 @@ export default function SaleDetailPage() {
             <h4 className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <Building2 className="h-3.5 w-3.5 text-red-600" /> Billed To
             </h4>
-            <p className="font-semibold text-sm text-slate-900 dark:text-slate-100">
-              {customer?.name || 'Walk-in Customer'}
-            </p>
-            {customer?.company && (
-              <p className="text-slate-600 dark:text-slate-400">
-                {customer.company}
+            {customer?.company ? (
+              <>
+                <p className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+                  {customer.company}
+                </p>
+                <p className="text-slate-700 dark:text-slate-300">
+                  {customer?.name || 'Walk-in Customer'}
+                </p>
+              </>
+            ) : (
+              <p className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+                {customer?.name || 'Walk-in Customer'}
               </p>
             )}
             {customer?.phone && (
@@ -260,12 +268,16 @@ export default function SaleDetailPage() {
               <tr>
                 <th className="p-3">#</th>
                 <th className="p-3">Product Description</th>
-                <th className="p-3">SKU</th>
+                <th className="p-3">Details</th>
                 <th className="p-3 text-right">Qty / Unit</th>
-                <th className="p-3 text-right">Unit Price (₹)</th>
-                <th className="p-3 text-right">Disc (₹)</th>
-                <th className="p-3 text-right">Tax (₹)</th>
-                <th className="p-3 text-right">Total (₹)</th>
+                {showPrices && (
+                  <>
+                    <th className="p-3 text-right">Unit Price (₹)</th>
+                    <th className="p-3 text-right">Disc (₹)</th>
+                    <th className="p-3 text-right">Tax (₹)</th>
+                    <th className="p-3 text-right">Total (₹)</th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -279,25 +291,29 @@ export default function SaleDetailPage() {
                   <td className="p-3 text-right font-semibold">
                     {item.quantity} {item.unitSnapshot}
                   </td>
-                  <td className="p-3 text-right">
-                    {formatCurrency(item.sellingPrice)}
-                  </td>
-                  <td className="p-3 text-right text-emerald-600">
-                    {item.discount ? formatCurrency(item.discount) : '-'}
-                  </td>
-                  <td className="p-3 text-right text-slate-500">
-                    {item.tax ? formatCurrency(item.tax) : '-'}
-                  </td>
-                  <td className="p-3 text-right font-bold text-slate-900 dark:text-slate-100">
-                    {formatCurrency(item.total)}
-                  </td>
+                  {showPrices && (
+                    <>
+                      <td className="p-3 text-right">
+                        {formatCurrency(item.sellingPrice)}
+                      </td>
+                      <td className="p-3 text-right text-emerald-600">
+                        {item.discount ? formatCurrency(item.discount) : '-'}
+                      </td>
+                      <td className="p-3 text-right text-slate-500">
+                        {item.tax ? formatCurrency(item.tax) : '-'}
+                      </td>
+                      <td className="p-3 text-right font-bold text-slate-900 dark:text-slate-100">
+                        {formatCurrency(item.total)}
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        {/* Totals Section */}
+        {showPrices && (
         <div className="flex justify-end border-t border-slate-200 dark:border-slate-800 pt-6">
           <div className="w-72 space-y-2 text-xs">
             <div className="flex justify-between text-slate-600 dark:text-slate-400">
@@ -353,6 +369,7 @@ export default function SaleDetailPage() {
             )}
           </div>
         </div>
+        )}
       </Card>
     </div>
   );

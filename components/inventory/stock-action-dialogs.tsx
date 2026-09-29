@@ -26,10 +26,10 @@ export function StockActionDialogs({
   const queryClient = useQueryClient();
   const [selectedProductId, setSelectedProductId] = useState('');
   const [adjustType, setAdjustType] = useState('ADJUSTMENT_IN');
-  const [quantity, setQuantity] = useState(10);
+  const [quantity, setQuantity] = useState('');
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
-  const [resetNewStock, setResetNewStock] = useState(0);
+  const [resetNewStock, setResetNewStock] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const { data: productsRes } = useQuery({
@@ -40,10 +40,10 @@ export function StockActionDialogs({
 
   const resetForms = () => {
     setSelectedProductId('');
-    setQuantity(10);
+    setQuantity('');
     setReason('');
     setNotes('');
-    setResetNewStock(0);
+    setResetNewStock('');
     setError(null);
   };
 
@@ -59,7 +59,7 @@ export function StockActionDialogs({
       inventoryService.adjustStock({
         productId: selectedProductId,
         type: adjustType,
-        quantity: Math.max(1, Math.round(Number(quantity) || 1)),
+        quantity: Math.max(1, Math.round(Number(quantity) || 0)),
         reason,
         notes,
       }),
@@ -117,6 +117,12 @@ export function StockActionDialogs({
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            const qty = Math.round(Number(quantity));
+            if (!quantity.trim() || !Number.isFinite(qty) || qty < 1) {
+              setError('Enter the quantity to adjust.');
+              return;
+            }
+            setError(null);
             adjustMutation.mutate();
           }}
           className="space-y-4"
@@ -155,8 +161,10 @@ export function StockActionDialogs({
               min="1"
               step="1"
               required
+              placeholder="Enter quantity"
               value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, Math.round(Number(e.target.value) || 1)))}
+              onFocus={(e) => e.currentTarget.select()}
+              onChange={(e) => setQuantity(e.target.value)}
             />
           </div>
 
@@ -204,6 +212,12 @@ export function StockActionDialogs({
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            const nextStock = Math.round(Number(resetNewStock));
+            if (resetNewStock.trim() === '' || !Number.isFinite(nextStock) || nextStock < 0) {
+              setError('Enter the new stock count. Use 0 to clear the stock.');
+              return;
+            }
+            setError(null);
             resetMutation.mutate();
           }}
           className="space-y-4"
@@ -236,8 +250,10 @@ export function StockActionDialogs({
             min="0"
             step="1"
             required
+            placeholder="Enter new stock"
             value={resetNewStock}
-            onChange={(e) => setResetNewStock(Math.max(0, Math.round(Number(e.target.value) || 0)))}
+            onFocus={(e) => e.currentTarget.select()}
+            onChange={(e) => setResetNewStock(e.target.value)}
           />
 
           <Input

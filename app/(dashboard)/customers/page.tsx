@@ -2,21 +2,36 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
-import { Plus, Eye, Phone, Mail, Building, CreditCard } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, Eye, Trash2 } from 'lucide-react';
 import { customerService } from '../../../services/customer.service';
 import { PageHeader } from '../../../components/common/page-header';
 import { DataTable, Column } from '../../../components/common/data-table';
 import { Button } from '../../../components/ui/button';
-import { Badge } from '../../../components/ui/badge';
+import { DeleteConfirmDialog } from '../../../components/ui/delete-confirm-dialog';
 import { Customer } from '../../../types';
 import { formatCurrency } from '../../../lib/utils';
 import { PermissionGuard } from '../../../components/common/permission-guard';
 import { PERMISSIONS } from '../../../lib/permissions';
 
 export default function CustomersPage() {
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [pending, setPending] = useState<Customer | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => customerService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      setPending(null);
+      setDeleteError(null);
+    },
+    onError: (err: Error) => {
+      setDeleteError(err.message || 'Could not delete this customer.');
+    },
+  });
 
   const { data: customersRes, isLoading } = useQuery({
     queryKey: ['customers', page, search],
@@ -96,11 +111,26 @@ export default function CustomersPage() {
     {
       header: 'Actions',
       cell: (row) => (
-        <Link href={`/customers/${row._id}`}>
-          <Button variant="outline" size="sm">
-            <Eye className="w-3.5 h-3.5 mr-1" /> Ledger
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/customers/${row._id}`}>
+            <Button variant="outline" size="sm">
+              <Eye className="w-3.5 h-3.5 mr-1" /> Ledger
+            </Button>
+          </Link>
+          <PermissionGuard permission={PERMISSIONS.CUSTOMERS_DELETE}>
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteError(null);
+                setPending(row);
+              }}
+              className="p-1.5 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-600"
+              title="Delete customer"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </PermissionGuard>
+        </div>
       ),
     },
   ];
@@ -131,6 +161,23 @@ export default function CustomersPage() {
         onSearchChange={setSearch}
         pagination={customersRes?.pagination}
         onPageChange={setPage}
+      />
+
+      <DeleteConfirmDialog
+        isOpen={!!pending}
+        kind="customer"
+        name={pending?.company || pending?.name || 'this customer'}
+        detail="Their ledger will no longer appear in this list. Continue only if you mean to remove them."
+        isLoading={deleteMutation.isPending}
+        error={deleteError}
+        onClose={() => {
+          if (deleteMutation.isPending) return;
+          setPending(null);
+          setDeleteError(null);
+        }}
+        onConfirm={() => {
+          if (pending) deleteMutation.mutate(pending._id);
+        }}
       />
     </div>
   );

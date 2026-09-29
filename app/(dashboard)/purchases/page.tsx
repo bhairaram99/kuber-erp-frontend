@@ -2,13 +2,14 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
-import { ShoppingBag, Plus, Eye, Search } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, Eye, Search, Trash2 } from 'lucide-react';
 import { purchaseService } from '../../../services/purchase.service';
 import { PageHeader } from '../../../components/common/page-header';
 import { DataTable } from '../../../components/common/data-table';
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
+import { DeleteConfirmDialog } from '../../../components/ui/delete-confirm-dialog';
 import { Input } from '../../../components/ui/input';
 import { formatCurrency, formatDate } from '../../../lib/utils';
 import { useAuth } from '../../../providers/auth-provider';
@@ -16,11 +17,27 @@ import { PERMISSIONS } from '../../../lib/permissions';
 import { Purchase } from '../../../types';
 
 export default function PurchasesPage() {
+  const queryClient = useQueryClient();
   const { hasPermission } = useAuth();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
+  const [pending, setPending] = useState<Purchase | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => purchaseService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['purchases'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      setPending(null);
+      setDeleteError(null);
+    },
+    onError: (err: Error) => {
+      setDeleteError(err.message || 'Could not delete this purchase.');
+    },
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ['purchases', page, limit, search, paymentStatus],
@@ -133,11 +150,26 @@ export default function PurchasesPage() {
       header: 'Actions',
       accessorKey: '_id',
       cell: (row: Purchase) => (
-        <Link href={`/purchases/${row._id}`}>
-          <Button variant="ghost" size="sm" className="h-8 gap-1">
-            <Eye className="h-3.5 w-3.5" /> View
-          </Button>
-        </Link>
+        <div className="flex items-center gap-1">
+          <Link href={`/purchases/${row._id}`}>
+            <Button variant="ghost" size="sm" className="h-8 gap-1">
+              <Eye className="h-3.5 w-3.5" /> View
+            </Button>
+          </Link>
+          {hasPermission(PERMISSIONS.PURCHASES_CANCEL) && (
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteError(null);
+                setPending(row);
+              }}
+              className="p-1.5 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-600"
+              title="Delete purchase"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
       ),
     },
   ];
@@ -203,6 +235,23 @@ export default function PurchasesPage() {
           setPage(1);
         }}
         emptyMessage="No purchase orders found."
+      />
+
+      <DeleteConfirmDialog
+        isOpen={!!pending}
+        kind="purchase"
+        name={pending?.purchaseNumber || 'this purchase'}
+        detail="Stock received on this order will be taken back out. Continue only if you mean to remove it."
+        isLoading={deleteMutation.isPending}
+        error={deleteError}
+        onClose={() => {
+          if (deleteMutation.isPending) return;
+          setPending(null);
+          setDeleteError(null);
+        }}
+        onConfirm={() => {
+          if (pending) deleteMutation.mutate(pending._id);
+        }}
       />
     </div>
   );

@@ -23,6 +23,10 @@ export const purchaseService = {
     return apiClient.get(`/purchases/recent?limit=${limit}`);
   },
 
+  delete: async (id: string): Promise<{ message: string }> => {
+    return apiClient.delete(`/purchases/${id}`);
+  },
+
   create: async (data: {
     supplierId: string;
     items: Array<{

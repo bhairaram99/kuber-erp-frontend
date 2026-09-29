@@ -3,12 +3,13 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Eye, Truck } from 'lucide-react';
+import { Plus, Eye, Trash2 } from 'lucide-react';
 import { supplierService } from '../../../services/supplier.service';
 import { PageHeader } from '../../../components/common/page-header';
 import { DataTable, Column } from '../../../components/common/data-table';
 import { Button } from '../../../components/ui/button';
 import { Dialog } from '../../../components/ui/dialog';
+import { DeleteConfirmDialog } from '../../../components/ui/delete-confirm-dialog';
 import { Input } from '../../../components/ui/input';
 import { Supplier } from '../../../types';
 import { formatCurrency } from '../../../lib/utils';
@@ -20,6 +21,8 @@ export default function SuppliersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [pending, setPending] = useState<Supplier | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -47,6 +50,18 @@ export default function SuppliersPage() {
     },
     onError: (err: any) => {
       setError(err.message || 'Failed to create supplier');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => supplierService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      setPending(null);
+      setDeleteError(null);
+    },
+    onError: (err: Error) => {
+      setDeleteError(err.message || 'Could not delete this supplier.');
     },
   });
 
@@ -120,11 +135,26 @@ export default function SuppliersPage() {
     {
       header: 'Actions',
       cell: (row) => (
-        <Link href={`/suppliers/${row._id}`}>
-          <Button variant="outline" size="sm">
-            <Eye className="w-3.5 h-3.5 mr-1" /> Orders
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/suppliers/${row._id}`}>
+            <Button variant="outline" size="sm">
+              <Eye className="w-3.5 h-3.5 mr-1" /> Orders
+            </Button>
+          </Link>
+          <PermissionGuard permission={PERMISSIONS.SUPPLIERS_DELETE}>
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteError(null);
+                setPending(row);
+              }}
+              className="p-1.5 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-600"
+              title="Delete supplier"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </PermissionGuard>
+        </div>
       ),
     },
   ];
@@ -236,6 +266,23 @@ export default function SuppliersPage() {
           </div>
         </form>
       </Dialog>
+
+      <DeleteConfirmDialog
+        isOpen={!!pending}
+        kind="supplier"
+        name={pending?.company || pending?.name || 'this supplier'}
+        detail="Their orders will no longer be linked from this list. Continue only if you mean to remove them."
+        isLoading={deleteMutation.isPending}
+        error={deleteError}
+        onClose={() => {
+          if (deleteMutation.isPending) return;
+          setPending(null);
+          setDeleteError(null);
+        }}
+        onConfirm={() => {
+          if (pending) deleteMutation.mutate(pending._id);
+        }}
+      />
     </div>
   );
 }
